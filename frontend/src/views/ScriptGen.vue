@@ -111,6 +111,8 @@ const handleGenerate = async () => {
     // 使用优化后的主题（如果有）
     const themeToUse = form.optimized_theme || form.theme
     
+    console.log('开始生成剧本...', themeToUse)
+    
     const result = await scriptStore.createScript({
       video_type: form.video_type,
       theme: themeToUse,
@@ -119,16 +121,26 @@ const handleGenerate = async () => {
       scene_type: form.scene_type || undefined
     })
     
+    console.log('剧本生成成功，result:', result)
     uiStore.showSuccess('剧本生成成功！')
     
     // 设置任务 ID
     taskStore.setTaskId(result.task_id)
+    console.log('任务 ID 已设置:', result.task_id, ', currentScript:', scriptStore.currentScript)
     
-    // 跳转到下一步
+    // 确保 currentScript 已设置
+    if (!scriptStore.currentScript) {
+      scriptStore.setCurrentScript(result.script)
+    }
+    
+    // 使用 replace 跳转，避免回退
+    console.log('准备跳转到 /image...')
     setTimeout(() => {
-      router.push('/image')
-    }, 1000)
+      console.log('执行跳转，使用 replace 模式')
+      router.replace('/image')
+    }, 800)
   } catch (err: any) {
+    console.error('生成失败:', err)
     uiStore.showError(err.message || '生成失败')
   } finally {
     generating.value = false
