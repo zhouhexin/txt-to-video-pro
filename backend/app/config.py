@@ -12,12 +12,22 @@ class Config:
     
     # 数据库配置
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATABASE_PATH = os.getenv('DATABASE_PATH', os.path.join(BASE_DIR, 'data', 'app.db'))
+    _db_path_env = os.getenv('DATABASE_PATH', os.path.join('data', 'app.db'))
+    # 如果是相对路径，则相对于 BASE_DIR 解析
+    if not os.path.isabs(_db_path_env):
+        DATABASE_PATH = os.path.join(BASE_DIR, _db_path_env)
+    else:
+        DATABASE_PATH = _db_path_env
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{DATABASE_PATH}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # 文件存储配置
-    OUTPUT_DIR = os.getenv('OUTPUT_DIR', os.path.join(BASE_DIR, 'output_tasks'))
+    _output_dir_env = os.getenv('OUTPUT_DIR', 'output_tasks')
+    # 如果是相对路径，则相对于 BASE_DIR 解析
+    if not os.path.isabs(_output_dir_env):
+        OUTPUT_DIR = os.path.join(BASE_DIR, _output_dir_env)
+    else:
+        OUTPUT_DIR = _output_dir_env
     
     # 阿里云百炼 API 配置
     ALIYUN_BAILIAN_API_KEY = os.getenv('ALIYUN_BAILIAN_API_KEY', '')

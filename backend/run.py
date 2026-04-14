@@ -17,14 +17,14 @@ if __name__ == '__main__':
     print("🎬 AI 视频生成平台 - 后端服务")
     print("=" * 50)
     print(f"📍 运行模式：{'开发' if app.config['DEBUG'] else '生产'}")
-    print(f"🔗 API 地址：http://localhost:5000")
+    print(f"🔗 API 地址：http://localhost:5001")
     print(f"📁 输出目录：{app.config['OUTPUT_DIR']}")
     print(f"💾 数据库：{app.config['DATABASE_PATH']}")
     print("=" * 50)
     
     app.run(
         host='0.0.0.0',
-        port=5000,
+        port=5001,
         debug=app.config['DEBUG'],
         threaded=True
     )

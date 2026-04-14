@@ -12,6 +12,22 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useUIStore } from '@/stores/ui'
+
+const uiStore = useUIStore()
+
+// 监听消息变化并显示
+watch(() => uiStore.message, (msg) => {
+  if (msg) {
+    ElMessage({
+      type: msg.type,
+      message: msg.content,
+      duration: 3000
+    })
+  }
+})
 </script>
 
 <style>

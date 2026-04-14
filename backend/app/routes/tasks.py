@@ -58,7 +58,8 @@ def confirm_task(task_id):
         if not task:
             return jsonify({'error': '任务不存在'}), 404
         
-        if task.status != 'waiting_confirm':
+        # 允许在 waiting_confirm 或 completed 状态下确认
+        if task.status not in ['waiting_confirm', 'completed', 'running']:
             return jsonify({'error': f'当前状态不能确认：{task.status}'}), 400
         
         # 更新状态

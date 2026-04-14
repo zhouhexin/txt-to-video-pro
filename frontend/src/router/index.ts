@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
 import ScriptGen from '../views/ScriptGen.vue'
 import ImageGen from '../views/ImageGen.vue'
 import VideoGen from '../views/VideoGen.vue'
@@ -11,7 +12,7 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    redirect: '/script'
+    component: Home
   },
   {
     path: '/script',

@@ -16,7 +16,7 @@ if [ ! -d "backend/venv" ]; then
 fi
 
 source backend/venv/bin/activate
-pip install -q -r backend/requirements.txt
+python3 -m pip install -q -r backend/requirements.txt
 
 # 检查 Node 依赖
 echo "📦 检查前端依赖..."
@@ -34,7 +34,7 @@ mkdir -p backend/output_tasks
 # 启动后端
 echo "🚀 启动后端服务..."
 cd backend
-python run.py &
+python3 run.py &
 BACKEND_PID=$!
 cd ..
 

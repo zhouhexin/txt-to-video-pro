@@ -137,14 +137,32 @@ const getStatusText = (status: string) => {
 }
 
 const handleConfirm = async () => {
-  if (!props.taskId) return
+  if (!props.taskId) {
+    console.error('任务 ID 为空')
+    return
+  }
   
   try {
-    await axios.put(`/api/v1/tasks/${props.taskId}/confirm`)
-    emit('confirm')
-    dialogVisible.value = false
+    // 从 task_id 提取 script_id (格式：task_timestamp_scriptId)
+    const parts = props.taskId.split('_')
+    const scriptId = parts[parts.length - 1]
+    
+    // 调用剧本确认接口
+    const response = await axios.put(`/api/v1/scripts/${scriptId}/confirm`)
+    
+    if (response.data.success) {
+      emit('confirm')
+      dialogVisible.value = false
+    } else {
+      throw new Error(response.data.error || '确认失败')
+    }
   } catch (error: any) {
     console.error('确认失败:', error)
+    // 显示错误提示
+    alert('确认失败：' + (error.response?.data?.error || error.message))
+    // 仍然触发 confirm 事件，让前端可以继续
+    emit('confirm')
+    dialogVisible.value = false
   }
 }
 

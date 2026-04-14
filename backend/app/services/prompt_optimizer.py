@@ -1,8 +1,9 @@
 import logging
 import requests
 from typing import Dict, Optional
-
+import os
 logger = logging.getLogger(__name__)
+from openai import OpenAI, APIError
 
 
 class PromptOptimizer:
@@ -10,7 +11,12 @@ class PromptOptimizer:
     
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.chat_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        self.client = OpenAI(
+            # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx"
+            api_key=api_key,
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        )
+        # self.chat_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
         
         # 场景风格配置（6 个陕文投景点）
         self.scene_styles = {
@@ -125,40 +131,29 @@ class PromptOptimizer:
         }
         
         try:
-            response = requests.post(self.chat_url, headers=headers, json=data, timeout=60)
-            
-            if response.status_code != 200:
-                logger.error(f"API 调用失败：{response.status_code}")
-                return {
-                    "success": False,
-                    "error": f"API 调用失败：{response.status_code}",
-                    "original": prompt,
-                    "optimized": prompt  # 返回原始提示词
-                }
-            
-            result = response.json()
-            optimized = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-            
-            if not optimized:
-                return {
-                    "success": False,
-                    "error": "优化结果为空",
-                    "original": prompt,
-                    "optimized": prompt
-                }
-            
-            logger.info(f"优化成功：{optimized[:50]}...")
-            
+            completion = self.client.chat.completions.create(
+                model="qwen-plus",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"请优化这个提示词：{prompt}"}
+                ]
+            )
+            # response = completion.model_dump_json()
+            optimized_prompt = completion.choices[0].message.content
+
+            logger.info(f"优化成功：{optimized_prompt[:50]}...")
+
             return {
                 "success": True,
                 "original": prompt,
-                "optimized": optimized,
+                "optimized": optimized_prompt,
                 "scene_type": scene_type,
                 "model": model
             }
-            
-        except Exception as e:
-            logger.error(f"优化异常：{str(e)}")
+
+        except APIError as e:
+            e = "错误：请求超时，请检查网络后重试"
+            logger.error(f"API调用失败：{e.message}")
             return {
                 "success": False,
                 "error": str(e),
