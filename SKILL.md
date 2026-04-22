@@ -40,16 +40,24 @@ txt-video-pipeline/
 │   │   ├── models/            # 数据库模型
 │   │   │   ├── script.py      # 剧本模型
 │   │   │   ├── task.py        # 任务模型
+│   │   │   ├── token_usage.py # Token 用量模型
 │   │   │   └── knowledge.py   # 知识库模型
 │   │   ├── routes/            # API 路由
 │   │   │   ├── scripts.py     # 剧本 API
 │   │   │   ├── images.py      # 图片 API
 │   │   │   ├── videos.py      # 视频 API
-│   │   │   └── files.py       # 文件 API
+│   │   │   ├── files.py       # 文件 API
+│   │   │   ├── tasks.py       # 任务管理 API
+│   │   │   ├── tokens.py      # Token 统计 API
+│   │   │   ├── prompts.py     # Prompt 优化 API
+│   │   │   └── statistics.py  # 统计数据 API
 │   │   ├── services/          # 业务逻辑层
 │   │   │   ├── script_service.py
 │   │   │   ├── image_service.py
-│   │   │   └── video_service.py
+│   │   │   ├── video_service.py
+│   │   │   ├── prompt_optimizer.py  # Prompt 优化服务
+│   │   │   ├── token_service.py     # Token 统计服务
+│   │   │   └── statistics_service.py # 统计数据服务
 │   │   └── utils/             # 工具函数
 │   ├── data/                  # SQLite 数据库目录
 │   │   └── app.db
@@ -72,17 +80,26 @@ txt-video-pipeline/
 │   │   │   ├── images.ts
 │   │   │   └── videos.ts
 │   │   ├── views/             # 页面组件
+│   │   │   ├── Home.vue           # 整合首页
 │   │   │   ├── ScriptGen.vue      # 步骤 1: 剧本生成
 │   │   │   ├── ImageGen.vue       # 步骤 2: 分镜生成
 │   │   │   ├── VideoGen.vue       # 步骤 3: 视频生成
 │   │   │   ├── Showcase.vue       # 步骤 4: 成果展示
 │   │   │   ├── History.vue        # 历史剧本
-│   │   │   └── VideoHistory.vue   # 视频历史
+│   │   │   ├── VideoHistory.vue   # 视频历史
+│   │   │   ├── TaskHistory.vue    # 任务历史管理
+│   │   │   ├── TokenStatistics.vue # Token 用量统计
+│   │   │   └── Statistics.vue     # 生成统计
 │   │   ├── components/        # 通用组件
+│   │   │   ├── StepProgress.vue
 │   │   │   ├── ScriptPreview.vue
 │   │   │   ├── ImageGrid.vue
 │   │   │   ├── VideoPlayer.vue
-│   │   │   └── StepProgress.vue
+│   │   │   ├── VideoConfig.vue        # 视频配置面板
+│   │   │   ├── CameraMotionSelector.vue # 运镜选择器
+│   │   │   ├── SceneSelector.vue      # 场景选择器
+│   │   │   ├── PromptOptimizer.vue    # Prompt 优化器
+│   │   │   └── ConfirmDialog.vue      # 确认对话框
 │   │   ├── hooks/             # 组合式函数
 │   │   │   ├── usePolling.ts  # 轮询任务状态
 │   │   │   └── useFileDownload.ts
@@ -668,6 +685,213 @@ server {
 
 **总工期**: 18-25 天（单人开发）
 
+## 新增功能（v1.1+）
+
+### 1. 🎯 Prompt 智能优化
+
+**文件**: `frontend/src/components/PromptOptimizer.vue`, `backend/app/services/prompt_optimizer.py`
+
+基于 AI 的分镜提示词优化功能，自动生成更详细、更专业的英文 prompt。
+
+- **智能扩写**: 将简短的中文描述扩展为详细的英文画面描述
+- **风格增强**: 自动添加摄影术语、光影效果、构图建议
+- **运镜集成**: 将运镜参数自然融入 prompt
+- **一键优化**: 在分镜生成前自动或手动优化 prompt
+
+**API**:
+```yaml
+POST /api/v1/prompts/optimize
+  描述：优化单个分镜的 prompt
+  请求：
+    {
+      "visual": "古风建筑，夜晚，灯火通明",
+      "camera": "pull",
+      "style": "电影感"
+    }
+  响应：
+    {
+      "optimized_prompt": "Cinematic wide shot of ancient Chinese architecture at night, illuminated by traditional lanterns, warm golden lighting, atmospheric fog, pull-back camera movement...",
+      "tokens_used": 156
+    }
+```
+
+### 2. 📊 Token 用量统计
+
+**文件**: `frontend/src/views/TokenStatistics.vue`, `backend/app/services/token_service.py`, `backend/app/models/token_usage.py`
+
+完整的 Token 用量追踪和可视化统计。
+
+- **实时统计**: 显示当前会话的 Token 消耗
+- **历史趋势**: 按日/周/月查看 Token 使用趋势
+- **分类统计**: 分别统计剧本生成、分镜优化、视频生成的 Token 消耗
+- **成本估算**: 根据 Token 用量估算 API 成本
+- **Top 任务**: 显示 Token 消耗最高的任务
+
+**数据模型**:
+```python
+class TokenUsage(db.Model):
+    __tablename__ = 'token_usage'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.String(50))
+    operation = db.Column(db.String(50))  # script, prompt_optimize, image, video
+    input_tokens = db.Column(db.Integer)
+    output_tokens = db.Column(db.Integer)
+    total_tokens = db.Column(db.Integer)
+    cost = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+```
+
+### 3. 📋 任务历史管理
+
+**文件**: `frontend/src/views/TaskHistory.vue`, `backend/app/routes/tasks.py`
+
+完整的任务执行历史记录。
+
+- **任务列表**: 查看所有历史任务的执行状态
+- **进度追踪**: 显示每个任务的执行进度和时间线
+- **失败重试**: 支持失败任务的重新执行
+- **批量操作**: 批量删除、导出任务
+
+### 4. 🏠 整合首页
+
+**文件**: `frontend/src/views/Home.vue`
+
+一站式工作台，整合所有功能流程。
+
+- **快速开始**: 从输入主题到生成视频的完整流程引导
+- **进度概览**: 显示当前进行中的任务状态
+- **最近任务**: 快速访问最近创建的任务
+- **统计数据**: 显示今日/本周生成统计
+
+### 5. 🎬 运镜与场景选择器
+
+**文件**: 
+- `frontend/src/components/CameraMotionSelector.vue`
+- `frontend/src/components/SceneSelector.vue`
+
+可视化的运镜和场景选择组件。
+
+**运镜类型**:
+- `pull` - 拉远镜头
+- `push` - 推进镜头
+- `pan_left` / `pan_right` - 左右摇镜
+- `tilt_up` / `tilt_down` - 上下摇镜
+- `zoom_in` / `zoom_out` - 缩放镜头
+- `static` - 固定镜头
+
+**场景类型**:
+- 开场全景
+- 中景叙事
+- 特写细节
+- 过渡镜头
+- 结尾镜头
+
+### 6. ⚙️ 视频配置面板
+
+**文件**: `frontend/src/components/VideoConfig.vue`
+
+详细的视频生成参数配置。
+
+- **时长设置**: 每个镜头的时长（1-10 秒）
+- **生成模式**: 单镜头模式 / 链式连续模式
+- **分辨率**: 选择输出视频分辨率
+- **帧率**: 选择输出帧率（24/30/60 fps）
+- **批量配置**: 统一配置所有镜头或单独配置
+
+## 新增 API 接口
+
+### Prompt 优化 API
+```yaml
+POST /api/v1/prompts/optimize
+  描述：优化单个分镜的 prompt
+  请求：
+    {
+      "shot_index": 0,
+      "visual": "...",
+      "camera": "pull",
+      "style": "电影感"
+    }
+  响应：
+    {
+      "optimized_prompt": "...",
+      "tokens_used": 156
+    }
+
+POST /api/v1/prompts/batch-optimize
+  描述：批量优化所有分镜的 prompt
+  请求：
+    {
+      "task_id": "task_xxx"
+    }
+  响应：
+    {
+      "optimized_count": 5,
+      "total_tokens": 780
+    }
+```
+
+### Token 统计 API
+```yaml
+GET /api/v1/tokens/statistics
+  描述：获取 Token 用量统计
+  查询参数：?days=7&group_by=day
+  响应：
+    {
+      "total_tokens": 125000,
+      "total_cost": 0.625,
+      "by_operation": {
+        "script": 50000,
+        "prompt_optimize": 30000,
+        "image": 25000,
+        "video": 20000
+      },
+      "trend": [...]
+    }
+
+GET /api/v1/tokens/usage
+  描述：获取 Token 使用明细
+  查询参数：?task_id=xxx&limit=50
+  响应：
+    {
+      "usages": [...],
+      "total": 100
+    }
+```
+
+### 任务管理 API
+```yaml
+GET /api/v1/tasks
+  描述：获取任务列表
+  查询参数：?status=all&limit=50&page=1
+  响应：
+    {
+      "tasks": [...],
+      "total": 150,
+      "page": 1
+    }
+
+GET /api/v1/tasks/:id
+  描述：获取任务详情（含进度时间线）
+  响应：
+    {
+      "task": {...},
+      "timeline": [
+        {"step": "script", "status": "completed", "duration": 5.2},
+        {"step": "image", "status": "completed", "duration": 45.8},
+        {"step": "video", "status": "processing", "progress": 60}
+      ]
+    }
+
+POST /api/v1/tasks/:id/retry
+  描述：重试失败的任务
+  响应：
+    {
+      "success": true,
+      "new_task_id": "task_yyy"
+    }
+```
+
 ## 与原始 skill 对比
 
 | 特性 | 原始 skill (Streamlit) | 新 skill (Vue + Flask) |
@@ -715,3 +939,23 @@ server {
 - "前端迁移"
 - "替换 Streamlit"
 - "专业版"
+- "Prompt 优化"
+- "Token 统计"
+- "任务管理"
+
+## 更新日志
+
+### v1.1 (2026-04-22)
+- ✨ 新增 Prompt 智能优化功能
+- ✨ 新增 Token 用量统计和可视化
+- ✨ 新增任务历史管理
+- ✨ 新增整合首页（Home.vue）
+- ✨ 新增运镜/场景选择器组件
+- ✨ 新增视频配置面板
+- 🐛 修复剧本生成后自动跳转问题
+- 🐛 完善首页功能和确认流程
+
+### v1.0 (2026-04-10)
+- 🎉 初始版本发布
+- Vue 3 + Flask 基础架构
+- 剧本生成、分镜生成、视频生成核心功能
