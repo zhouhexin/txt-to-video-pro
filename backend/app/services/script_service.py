@@ -4,6 +4,7 @@ from datetime import datetime
 from app import db
 from app.models import Script, Task
 from .prompt_optimizer import PromptOptimizer
+from .token_service import TokenService
 import dashscope
 from dashscope import Generation
 
@@ -18,7 +19,7 @@ class ScriptService:
         self.prompt_optimizer = PromptOptimizer(api_key)
     
     def generate_script(self, video_type: str, theme: str, keywords: str = "", 
-                       num_shots: int = 5, scene_type: str = None) -> dict:
+                       num_shots: int = 5, scene_type: str = None, task_id: str = None) -> dict:
         """
         生成剧本
         
@@ -27,6 +28,7 @@ class ScriptService:
             theme: 主题
             keywords: 关键词
             num_shots: 分镜数量
+            task_id: 关联的任务ID（可选）
             
         Returns:
             生成的剧本字典
@@ -42,6 +44,26 @@ class ScriptService:
             
             if response.status_code == 200:
                 content = response.output.choices[0].message.content
+                
+                # 记录 token 使用情况
+                try:
+                    usage = response.usage
+                    input_tokens = usage.input_tokens if hasattr(usage, 'input_tokens') else 0
+                    output_tokens = usage.output_tokens if hasattr(usage, 'output_tokens') else 0
+                    
+                    TokenService.record_usage(
+                        model_type='script_generate',
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        model_name='qwen-max',
+                        task_id=task_id,
+                        prompt_text=prompt,
+                        response_text=content,
+                        scene='script_creation'
+                    )
+                except Exception as token_error:
+                    logger.warning(f"Token 记录失败：{token_error}")
+                
                 script_data = self._parse_script_response(content, video_type, theme, keywords)
                 return script_data
             else:

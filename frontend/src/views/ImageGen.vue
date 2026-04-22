@@ -113,7 +113,6 @@ import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
 import { useUIStore } from '@/stores/ui'
 import { generateImage, getTaskImages } from '@/api/images'
-import { confirmScript } from '@/api/scripts'
 import axios from 'axios'
 import ScriptPreview from '@/components/ScriptPreview.vue'
 import CameraMotionSelector from '@/components/CameraMotionSelector.vue'
@@ -161,16 +160,21 @@ const loadTaskStatus = async () => {
   }
 }
 
-const handleGenerateSingle = async (index: number, prompt: string, camera?: string) => {
+const handleGenerateSingle = async (index: number, prompt: string, _camera?: string) => {
   if (!taskStore.taskId) return
   
   images.value[index] = { status: 'running' }
   
   try {
+    // 获取主题信息用于增强prompt
+    const script = scriptStore.currentScript
     const result = await generateImage({
       task_id: taskStore.taskId,
       shot_index: index,
-      prompt
+      prompt,
+      theme: script?.theme,           // 传递主题
+      video_type: script?.video_type, // 传递视频类型
+      style: script?.style            // 传递风格
     })
     
     images.value[index] = {
@@ -188,21 +192,44 @@ const handleGenerateSingle = async (index: number, prompt: string, camera?: stri
 }
 
 const handleGenerateAll = async () => {
-  if (!scriptStore.currentScript || !taskStore.taskId) return
+  // 前置检查
+  if (!scriptStore.currentScript) {
+    uiStore.showError('请先生成剧本')
+    return
+  }
+  if (!taskStore.taskId) {
+    uiStore.showError('任务 ID 不存在，请重新生成剧本')
+    return
+  }
   
   generatingAll.value = true
   
   try {
     // 顺序生成每个分镜
-    for (let i = 0; i < scriptStore.currentScript.shots.length; i++) {
+    const totalShots = scriptStore.currentScript.shots.length
+        
+    for (let i = 0; i < totalShots; i++) {
       const shot = scriptStore.currentScript.shots[i]
+      
+      // 验证 prompt
+      if (!shot.prompt) {
+        images.value[i] = { status: 'failed' }
+        uiStore.showError(`镜头${i + 1} 缺少 prompt，无法生成`)
+        continue
+      }
+      
       images.value[i] = { status: 'running' }
       
       try {
+        // 获取主题信息用于增强prompt
+        const script = scriptStore.currentScript
         const result = await generateImage({
           task_id: taskStore.taskId,
           shot_index: i,
-          prompt: shot.prompt
+          prompt: shot.prompt,
+          theme: script?.theme,           // 传递主题
+          video_type: script?.video_type, // 传递视频类型
+          style: script?.style            // 传递风格
         })
         
         images.value[i] = {
@@ -210,17 +237,29 @@ const handleGenerateAll = async () => {
           shot_index: i,
           status: 'completed'
         }
+        
+        uiStore.showSuccess(`镜头${i + 1} 生成成功`)
       } catch (err: any) {
         images.value[i] = { status: 'failed' }
         uiStore.showError(`镜头${i + 1} 生成失败：${err.message}`)
+      }
+      
+      // 等待 10 秒再生成下一个（最后一个不需要等待）
+      if (i < totalShots - 1) {
+        uiStore.showInfo(`等待 10 秒后继续生成下一个分镜...`)
+        await new Promise(resolve => setTimeout(resolve, 10000))
       }
     }
     
     // 生成完成后，检查是否需要确认
     await loadTaskStatus()
     
-    if (currentTaskStatus.value === 'running' || currentTaskStatus.value === 'completed') {
-      uiStore.showSuccess('所有分镜图生成完成')
+    // 检查是否所有分镜都成功
+    const successCount = images.value.filter(img => img.status === 'completed').length
+    if (successCount === totalShots) {
+      uiStore.showSuccess('所有分镜图生成完成！')
+    } else {
+      uiStore.showInfo(`已完成 ${successCount}/${totalShots} 个分镜图`)
     }
   } finally {
     generatingAll.value = false

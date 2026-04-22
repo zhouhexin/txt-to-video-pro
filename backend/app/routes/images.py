@@ -15,6 +15,9 @@ def generate_image():
         task_id = data.get('task_id')
         shot_index = data.get('shot_index', 0)
         prompt = data.get('prompt', '')
+        theme = data.get('theme', '')  # 主题
+        video_type = data.get('video_type', '')  # 视频类型
+        style = data.get('style', '')  # 风格
         
         if not task_id or not prompt:
             return jsonify({'error': 'task_id 和 prompt 不能为空'}), 400
@@ -24,8 +27,11 @@ def generate_image():
         output_dir = current_app.config['OUTPUT_DIR']
         image_service = ImageService(api_key, output_dir)
         
-        # 生成图片
-        task_image = image_service.generate_image(task_id, shot_index, prompt)
+        # 生成图片（带主题增强）
+        task_image = image_service.generate_image(
+            task_id, shot_index, prompt, 
+            theme=theme, video_type=video_type, style=style
+        )
         
         return jsonify({
             'status': 'completed',

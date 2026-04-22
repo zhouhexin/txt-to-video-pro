@@ -56,7 +56,7 @@
                 active-text="启用"
                 inactive-text="禁用"
               />
-              <p class="form-hint">启用后自动生成首尾帧过渡</p>
+              <p class="form-hint">启用后用相邻分镜图作为首尾帧，视频过渡更连贯</p>
             </el-form-item>
           </el-col>
         </el-row>

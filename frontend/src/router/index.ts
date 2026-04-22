@@ -7,6 +7,7 @@ import Showcase from '../views/Showcase.vue'
 import History from '../views/History.vue'
 import TaskHistory from '../views/TaskHistory.vue'
 import Statistics from '../views/Statistics.vue'
+import TokenStatistics from '../views/TokenStatistics.vue'
 
 const routes = [
   {
@@ -48,6 +49,11 @@ const routes = [
     path: '/statistics',
     name: 'Statistics',
     component: Statistics
+  },
+  {
+    path: '/token-statistics',
+    name: 'TokenStatistics',
+    component: TokenStatistics
   }
 ]
 

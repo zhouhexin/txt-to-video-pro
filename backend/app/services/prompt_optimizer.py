@@ -4,6 +4,7 @@ from typing import Dict, Optional
 import os
 logger = logging.getLogger(__name__)
 from openai import OpenAI, APIError
+from .token_service import TokenService
 
 
 class PromptOptimizer:
@@ -77,7 +78,7 @@ class PromptOptimizer:
         return self.camera_motions
     
     def optimize_prompt(self, prompt: str, scene_type: Optional[str] = None, 
-                       model: str = "qwen3.5-plus") -> Dict:
+                       model: str = "qwen3.5-plus", task_id: str = None) -> Dict:
         """
         优化提示词
         
@@ -85,6 +86,7 @@ class PromptOptimizer:
             prompt: 原始提示词
             scene_type: 场景类型（可选）
             model: AI 模型
+            task_id: 关联的任务ID（可选）
             
         Returns:
             优化结果字典
@@ -116,32 +118,43 @@ class PromptOptimizer:
 2. 描述光影效果和氛围
 3. 输出 150 字左右的详细描述
 4. 只输出优化后的提示词，不要其他内容"""
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"请优化这个提示词：{prompt}"}
-            ]
-        }
-        
+
         try:
             completion = self.client.chat.completions.create(
-                model="qwen-plus",
+                model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"请优化这个提示词：{prompt}"}
                 ]
+                # stream_options={"include_usage": True}  # 获取token使用量
             )
-            # response = completion.model_dump_json()
             optimized_prompt = completion.choices[0].message.content
-
             logger.info(f"优化成功：{optimized_prompt[:50]}...")
+
+            print("输入Token:", completion.usage.prompt_tokens)
+            print("输出Token:", completion.usage.completion_tokens)
+            print("总计Token:", completion.usage.total_tokens)
+
+            # 记录 token 使用情况
+            try:
+                usage = completion.usage
+                input_tokens = usage.prompt_tokens if usage else 0
+                output_tokens = usage.completion_tokens if usage else 0
+                
+                full_prompt = f"{system_prompt}\n\n请优化这个提示词：{prompt}"
+                
+                TokenService.record_usage(
+                    model_type='prompt_optimize',
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    model_name=model,
+                    task_id=task_id,
+                    prompt_text=full_prompt,
+                    response_text=optimized_prompt,
+                    scene='optimization'
+                )
+            except Exception as token_error:
+                logger.warning(f"Token 记录失败：{token_error}")
 
             return {
                 "success": True,

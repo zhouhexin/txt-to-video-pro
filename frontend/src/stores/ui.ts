@@ -33,6 +33,14 @@ export const useUIStore = defineStore('ui', {
       this.showMessage('error', content)
     },
     
+    showInfo(content: string) {
+      this.showMessage('info', content)
+    },
+    
+    showWarning(content: string) {
+      this.showMessage('warning', content)
+    },
+    
     clearMessage() {
       this.message = null
     }

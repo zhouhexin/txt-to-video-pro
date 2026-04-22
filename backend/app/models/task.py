@@ -80,7 +80,8 @@ class TaskVideo(db.Model):
     shot_index = db.Column(db.Integer, nullable=False)
     file_path = db.Column(db.String(500))
     duration = db.Column(db.Integer, default=5)
-    status = db.Column(db.String(20), default='pending')  # pending, completed, failed
+    status = db.Column(db.String(20), default='pending')  # pending, running, completed, failed
+    error_message = db.Column(db.Text)  # 错误信息
     prompt = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -93,6 +94,7 @@ class TaskVideo(db.Model):
             'file_path': self.file_path,
             'duration': self.duration,
             'status': self.status,
+            'error_message': self.error_message,
             'prompt': self.prompt,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

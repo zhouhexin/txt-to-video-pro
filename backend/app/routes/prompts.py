@@ -13,6 +13,7 @@ def optimize_prompt():
         prompt = data.get('prompt', '')
         scene_type = data.get('scene_type')
         model = data.get('model', 'qwen3.5-plus')
+        task_id = data.get('task_id')  # 获取task_id
         
         if not prompt:
             return jsonify({'error': '提示词不能为空'}), 400
@@ -21,8 +22,8 @@ def optimize_prompt():
         api_key = current_app.config['ALIYUN_BAILIAN_API_KEY']
         optimizer = PromptOptimizer(api_key)
         
-        # 优化提示词
-        result = optimizer.optimize_prompt(prompt, scene_type, model)
+        # 优化提示词（传递task_id）
+        result = optimizer.optimize_prompt(prompt, scene_type, model, task_id)
         
         return jsonify(result)
         

@@ -4,7 +4,7 @@
     <el-card class="welcome-card" shadow="hover">
       <div class="welcome-content">
         <div class="welcome-text">
-          <h1>🎬 AI 视频生成平台 <span class="pro-badge">Pro</span></h1>
+<!--          <h1>🎬 AI 视频生成平台 <span class="pro-badge">Pro</span></h1>-->
           <p class="subtitle">从剧本到成片，AI 驱动的全流程视频创作</p>
           <p class="description">
             基于阿里云百炼大模型，支持智能剧本生成、自动分镜绘制、视频生成与合并
@@ -14,9 +14,6 @@
           <el-button type="primary" size="large" @click="router.push('/script')">
             <el-icon><VideoCamera /></el-icon> 开始创作
           </el-button>
-          <el-button size="large" @click="router.push('/showcase')">
-            <el-icon><Picture /></el-icon> 查看成果
-          </el-button>
         </div>
       </div>
     </el-card>
@@ -24,7 +21,7 @@
     <!-- 功能步骤 -->
     <el-row :gutter="20" class="steps-row">
       <el-col :span="6">
-        <el-card class="step-card" shadow="hover" @click="router.push('/script')">
+        <el-card class="step-card" shadow="hover">
           <div class="step-icon">📝</div>
           <h3>智能剧本生成</h3>
           <p>AI 自动生成专业剧本和分镜描述</p>
@@ -37,7 +34,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card class="step-card" shadow="hover" @click="router.push('/image')">
+        <el-card class="step-card" shadow="hover">
           <div class="step-icon">🎨</div>
           <h3>分镜图生成</h3>
           <p>文生图，批量生成分镜画面</p>
@@ -50,7 +47,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card class="step-card" shadow="hover" @click="router.push('/video')">
+        <el-card class="step-card" shadow="hover">
           <div class="step-icon">🎬</div>
           <h3>视频生成</h3>
           <p>图生视频，首尾帧控制</p>
@@ -63,7 +60,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card class="step-card" shadow="hover" @click="router.push('/showcase')">
+        <el-card class="step-card" shadow="hover">
           <div class="step-icon">📊</div>
           <h3>成果展示</h3>
           <p>完整视频播放与下载</p>
@@ -82,22 +79,28 @@
         <h2>⚡ 快速入口</h2>
       </template>
       <el-row :gutter="20">
-        <el-col :span="8">
+        <el-col :span="6">
           <el-button class="quick-btn" @click="router.push('/history')">
             <el-icon><Document /></el-icon>
             <span>历史记录</span>
           </el-button>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-button class="quick-btn" @click="router.push('/task-history')">
             <el-icon><List /></el-icon>
             <span>任务历史</span>
           </el-button>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-button class="quick-btn" @click="router.push('/statistics')">
             <el-icon><DataAnalysis /></el-icon>
             <span>数据统计</span>
+          </el-button>
+        </el-col>
+        <el-col :span="6">
+          <el-button class="quick-btn" @click="router.push('/token-statistics')">
+            <el-icon><Coin /></el-icon>
+            <span>Token 统计</span>
           </el-button>
         </el-col>
       </el-row>
@@ -198,7 +201,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { VideoCamera, Picture, Document, List, DataAnalysis, ArrowRight } from '@element-plus/icons-vue'
+import { VideoCamera, Document, List, DataAnalysis, ArrowRight, Coin } from '@element-plus/icons-vue'
 import { searchScripts, deleteScript } from '@/api/scripts'
 import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
@@ -214,7 +217,7 @@ const recentScripts = ref<any[]>([])
 // 加载最近项目
 const loadRecentScripts = async () => {
   try {
-    const result = await searchScripts('')
+    const result = await searchScripts({})
     recentScripts.value = result.scripts.slice(0, 5)
   } catch (error) {
     console.error('加载最近项目失败:', error)
@@ -320,7 +323,6 @@ onMounted(() => {
 }
 
 .step-card {
-  cursor: pointer;
   transition: all 0.3s;
   height: 100%;
   text-align: center;

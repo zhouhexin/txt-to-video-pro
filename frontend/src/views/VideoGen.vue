@@ -104,7 +104,7 @@ import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
 import { useUIStore } from '@/stores/ui'
 import { getTaskImages } from '@/api/images'
-import { generateVideo, getTaskVideos, mergeVideos } from '@/api/videos'
+import { generateVideo, getTaskVideos, mergeVideos, generateAllVideos } from '@/api/videos'
 import VideoConfig from '@/components/VideoConfig.vue'
 
 const router = useRouter()
@@ -157,18 +157,23 @@ const loadVideos = async () => {
 }
 
 const handleGenerateSingle = async (index: number, duration: number, camera?: string) => {
-  if (!taskStore.taskId) return
+  if (!taskStore.taskId || !scriptStore.currentScript) return
   
   videos.value[index] = { status: 'running' }
   
   try {
+    // 获取分镜的视觉描述
+    const shot = scriptStore.currentScript.shots[index]
     const result = await generateVideo({
       task_id: taskStore.taskId,
       shot_index: index,
       duration: duration,
       mode: taskStore.genMode,
       resolution: resolution.value,
-      camera_motion: camera || 'push'
+      camera_motion: camera || 'push',
+      first_last_mode: firstLastMode.value,
+      total_shots: scriptStore.currentScript.shots.length,
+      visual_desc: shot?.visual  // 传递视觉描述
     })
     
     videos.value[index] = {
@@ -177,7 +182,8 @@ const handleGenerateSingle = async (index: number, duration: number, camera?: st
       status: 'completed'
     }
     
-    uiStore.showSuccess(`镜头${index + 1} 视频生成成功`)
+    const modeText = result.first_last_mode ? '（首尾帧模式）' : ''
+    uiStore.showSuccess(`镜头${index + 1} 视频生成成功${modeText}`)
     await loadVideos()
   } catch (err: any) {
     videos.value[index] = { status: 'failed' }
@@ -190,33 +196,73 @@ const handleGenerateAll = async () => {
   
   generatingAll.value = true
   
-  try {
-    for (let i = 0; i < scriptStore.currentScript.shots.length; i++) {
-      const shot = scriptStore.currentScript.shots[i]
-      
-      if (images.value[i]?.status !== 'completed') continue
-      
+  // 标记所有有图片的分镜为运行中
+  const shotsToGenerate: Array<{ index: number; duration: number; camera_motion: string; visual?: string }> = []
+  scriptStore.currentScript.shots.forEach((shot, i) => {
+    if (images.value[i]?.status === 'completed') {
       videos.value[i] = { status: 'running' }
-      
-      try {
-        await generateVideo({
-          task_id: taskStore.taskId,
-          shot_index: i,
-          duration: shot.duration || defaultDuration.value,
-          mode: taskStore.genMode,
-          resolution: resolution.value,
-          camera_motion: shot.camera || 'push'
-        })
-        
-        videos.value[i] = { status: 'completed' }
-      } catch (err: any) {
-        videos.value[i] = { status: 'failed' }
-        uiStore.showError(`镜头${i + 1} 生成失败`)
+      shotsToGenerate.push({
+        index: i,
+        duration: shot.duration || defaultDuration.value,
+        camera_motion: shot.camera || 'push',
+        visual: shot.visual  // 传递视觉描述
+      })
+    }
+  })
+  
+  if (shotsToGenerate.length === 0) {
+    uiStore.showError('没有可生成的分镜图')
+    generatingAll.value = false
+    return
+  }
+  
+  try {
+    const modeText = firstLastMode.value ? '（首尾帧模式）' : ''
+    uiStore.showInfo(`开始批量生成 ${shotsToGenerate.length} 个视频片段${modeText}...`)
+    
+    const result = await generateAllVideos({
+      task_id: taskStore.taskId,
+      shots: shotsToGenerate,
+      resolution: resolution.value,
+      first_last_mode: firstLastMode.value
+    })
+    
+    // 更新每个分镜的状态
+    result.results.forEach((r) => {
+      if (r.status === 'completed') {
+        videos.value[r.shot_index] = {
+          shot_index: r.shot_index,
+          status: 'completed',
+          url: r.url,
+          first_last_mode: r.first_last_mode
+        }
+      } else {
+        videos.value[r.shot_index] = {
+          shot_index: r.shot_index,
+          status: 'failed',
+          error: r.error
+        }
       }
+    })
+    
+    const successCount = result.results.filter(r => r.status === 'completed').length
+    const failCount = result.results.filter(r => r.status === 'failed').length
+    const firstLastCount = result.results.filter(r => r.first_last_mode).length
+    
+    if (failCount === 0) {
+      const firstLastText = firstLastMode.value && firstLastCount > 0 ? `，其中 ${firstLastCount} 个使用首尾帧模式` : ''
+      uiStore.showSuccess(`所有 ${successCount} 个视频片段生成完成${firstLastText}`)
+    } else {
+      uiStore.showWarning(`生成完成：${successCount} 个成功，${failCount} 个失败`)
     }
     
-    uiStore.showSuccess('所有视频片段生成完成')
     await loadVideos()
+  } catch (err: any) {
+    uiStore.showError(`批量生成失败：${err.message || '未知错误'}`)
+    // 重置所有运行中的状态为失败
+    shotsToGenerate.forEach((s) => {
+      videos.value[s.index] = { status: 'failed' }
+    })
   } finally {
     generatingAll.value = false
   }

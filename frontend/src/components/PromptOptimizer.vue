@@ -64,6 +64,7 @@ const props = defineProps<{
   originalPrompt?: string
   optimizedPrompt?: string
   sceneType?: string
+  taskId?: string
 }>()
 
 const emit = defineEmits<{
@@ -88,7 +89,8 @@ const handleOptimize = async () => {
   try {
     const response = await axios.post('/api/v1/prompts/optimize', {
       prompt: originalPrompt.value,
-      scene_type: props.sceneType || undefined
+      scene_type: props.sceneType || undefined,
+      task_id: props.taskId || undefined
     })
     
     const result = response.data

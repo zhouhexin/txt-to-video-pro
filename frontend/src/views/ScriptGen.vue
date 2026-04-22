@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
@@ -82,6 +82,11 @@ const taskStore = useTaskStore()
 const uiStore = useUIStore()
 
 const generating = ref(false)
+
+// 页面加载时清空当前剧本，避免显示历史剧本
+onMounted(() => {
+  scriptStore.setCurrentScript(null)
+})
 
 const form = reactive({
   video_type: '文旅宣传',

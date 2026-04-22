@@ -35,30 +35,30 @@
         v-loading="scriptStore.isLoading"
         @row-click="handleRowClick"
       >
-        <el-table-column prop="title" label="标题" min-width="200" />
-        <el-table-column prop="theme" label="主题" width="150" />
-        <el-table-column prop="video_type" label="类型" width="120">
+        <el-table-column prop="title" label="标题" min-width="150" header-align="center" align="left" />
+        <el-table-column prop="theme" label="主题提示词" width="450" header-align="center" align="left"/>
+        <el-table-column prop="video_type" label="类型" width="100" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ row.video_type }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="shots" label="分镜数" width="100">
+        <el-table-column prop="shots" label="分镜数" width="70" align="center">
           <template #default="{ row }">
             {{ row.shots?.length || 0 }}
           </template>
         </el-table-column>
-        <el-table-column prop="task_id" label="任务 ID" width="180">
-          <template #default="{ row }">
-            <el-tag size="small" v-if="row.task_id">{{ row.task_id.substring(0, 15) }}...</el-tag>
-            <span v-else style="color: #999; font-size: 12px">未生成</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180">
+<!--        <el-table-column prop="task_id" label="任务 ID" width="120">-->
+<!--          <template #default="{ row }">-->
+<!--            <span v-if="row.task_id" style="font-size: 12px; color: #606266;">{{ row.task_id.substring(0, 8) }}...</span>-->
+<!--            <span v-else style="color: #999; font-size: 12px">未生成</span>-->
+<!--          </template>-->
+<!--        </el-table-column>-->
+        <el-table-column prop="created_at" label="创建时间" width="120" align="center">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <el-button size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button size="small" type="primary" @click.stop="handleUse(row)">使用</el-button>
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
@@ -184,7 +184,7 @@ const handleFilter = () => {
   currentPage.value = 1
 }
 
-const handleRowClick = (row: any) => {
+const handleRowClick = (_row: any) => {
   // 点击行不触发，避免误操作
 }
 
@@ -223,10 +223,10 @@ const handleDelete = async (script: any) => {
   }
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return ''
+const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN')
+  return date.toLocaleDateString('zh-CN')
 }
 </script>
 
