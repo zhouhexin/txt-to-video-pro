@@ -7,37 +7,7 @@
     </template>
     
     <el-form :model="config" label-width="120px" size="default">
-      <!-- 配音设置 -->
-      <el-form-item label="启用配音">
-        <el-switch v-model="config.enableVoice" />
-      </el-form-item>
-      
-      <template v-if="config.enableVoice">
-        <el-form-item label="选择音色">
-          <el-select v-model="config.voiceId" placeholder="选择音色" style="width: 100%">
-            <el-option
-              v-for="(voice, key) in voices"
-              :key="key"
-              :label="voice"
-              :value="key"
-            />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="试听音色">
-          <el-button 
-            @click="handlePreviewVoice" 
-            :loading="playingVoice"
-          >
-            {{ playingVoice ? '停止播放' : '🔊 试听' }}
-          </el-button>
-          <span v-if="playingVoice" style="margin-left: 10px; color: #67c23a">
-            播放中...
-          </span>
-        </el-form-item>
-      </template>
-      
-      <el-divider />
+      <!-- BGM 设置 -->
       
       <!-- BGM 设置 -->
       <el-form-item label="启用 BGM">
@@ -140,7 +110,7 @@ interface AudioConfig {
 }
 
 const config = reactive<AudioConfig>({
-  enableVoice: true,
+  enableVoice: false,  // 配音移到最后一步
   voiceId: 'xiaoxiao',
   enableBGM: true,
   bgmId: '',

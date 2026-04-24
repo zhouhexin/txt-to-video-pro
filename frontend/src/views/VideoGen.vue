@@ -15,8 +15,14 @@
         v-model:first-last-mode="firstLastMode"
       />
       
-      <!-- 音频配置 -->
-      <AudioConfig ref="audioConfigRef" style="margin-top: 20px" />
+      <!-- BGM 和音效配置（配音移到最后一步） -->
+      <div style="margin-top: 20px; padding: 15px; background: #f5f7fa; border-radius: 8px; border: 1px solid #e4e7ed">
+        <h4 style="margin: 0 0 10px 0; color: #303133">🎵 BGM 和音效配置</h4>
+        <p style="margin: 0 0 15px 0; color: #909399; font-size: 13px">
+          💡 提示：配音功能已移至<b>成果展示</b>页面，在视频合并完成后再添加
+        </p>
+        <AudioConfig ref="audioConfigRef" />
+      </div>
       
       <el-card class="video-card" style="margin-top: 20px">
         <template #header>
@@ -280,24 +286,11 @@ const handleMerge = async () => {
   merging.value = true
   
   try {
-    // 如果启用了音频，先生成配音再合并
-    const audioConfig = audioConfigRef.value?.config
-    if (audioConfig?.enableVoice) {
-      uiStore.showInfo('正在生成配音...')
-      await generateAllAudios({
-        task_id: taskStore.taskId,
-        voice_id: audioConfig.voiceId
-      })
-    }
-    
-    // 合并音视频
-    const result = await mergeAudioVideo({
-      task_id: taskStore.taskId
-    })
+    // 仅合并视频（不含配音）
+    const result = await mergeVideos(taskStore.taskId)
     
     mergedVideo.value = result
-    const audioText = audioConfig?.enableVoice ? '（含配音）' : ''
-    uiStore.showSuccess(`视频合并成功${audioText}`)
+    uiStore.showSuccess('视频合并成功！请前往成果展示页面添加配音')
   } catch (err: any) {
     uiStore.showError(err.message)
   } finally {
