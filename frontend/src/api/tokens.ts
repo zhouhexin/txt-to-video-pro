@@ -80,8 +80,9 @@ export const getTokenUsageList = async (params?: {
   if (params?.task_id) searchParams.append('task_id', params.task_id)
   if (params?.start_date) searchParams.append('start_date', params.start_date)
   if (params?.end_date) searchParams.append('end_date', params.end_date)
-  if (params?.page) searchParams.append('page', params.page.toString())
-  if (params?.per_page) searchParams.append('per_page', params.per_page.toString())
+  // 确保page和per_page总是被添加，使用默认值
+  searchParams.append('page', (params?.page ?? 1).toString())
+  searchParams.append('per_page', (params?.per_page ?? 20).toString())
   
   const response = await api.get(`/tokens/records?${searchParams.toString()}`)
   return response.data

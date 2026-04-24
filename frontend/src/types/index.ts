@@ -66,14 +66,3 @@ export interface ScriptResponse {
   script: Script
 }
 
-export interface ImageResponse {
-  status: string
-  image_id: number
-  url: string
-}
-
-export interface VideoResponse {
-  status: string
-  video_id: number
-  url: string
-}

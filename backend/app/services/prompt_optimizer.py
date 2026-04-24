@@ -96,44 +96,55 @@ class PromptOptimizer:
         # 构建系统提示词
         if scene_type and scene_type in self.scene_styles:
             style_info = self.scene_styles[scene_type]
-            system_prompt = f"""你是一位专业的 AI 视频提示词优化专家，擅长{scene_type}场景的描述。
-请优化用户的提示词，使其更加详细、生动，适合视频生成模型。
+            system_prompt = f"""你是专业 AI 视频提示词优化专家，精通{scene_type}场景创作。
+优化用户的提示词，适配视频生成模型，内容更精细生动。
 
 风格参考：
-- 场景特点：{style_info['style']}
+- 场景：{style_info['style']}
 - 氛围：{style_info['atmosphere']}
-- 推荐镜头：{self.camera_motions.get(style_info['camera_motion'], '')}
+- 镜头：{self.camera_motions.get(style_info['camera_motion'], '')}
 
 要求：
-1. 添加详细的视觉细节（建筑、光影、色彩、构图）
-2. 描述镜头运动和光影效果
-3. 输出 150 字左右的详细描述
-4. 只输出优化后的提示词，不要其他内容"""
+1. 补充光影、色彩、构图等细节
+2. 写明镜头运动和光影效果
+3. 字数约 150 字，详细描述
+4. 仅输出优化后提示词，无额外内容"""
         else:
-            system_prompt = """你是一位专业的 AI 视频提示词优化专家。
-请优化用户的提示词，使其更加详细、生动，适合视频生成模型。
+            system_prompt = """你是专业的 AI 视频提示词优化专家。
+优化用户提示词，适配视频生成模型，内容更精细生动。
 
 要求：
-1. 添加详细的视觉细节和镜头运动描述
-2. 描述光影效果和氛围
-3. 输出 150 字左右的详细描述
-4. 只输出优化后的提示词，不要其他内容"""
+1. 补充视觉细节、镜头运动
+2. 描述光影与整体氛围
+3. 字数约 150 字
+4. 仅输出优化后提示词，无额外内容"""
 
         try:
             completion = self.client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"请优化这个提示词：{prompt}"}
-                ]
-                # stream_options={"include_usage": True}  # 获取token使用量
+                    {"role": "user", "content": f"优化提示词：{prompt}"}
+                ],
+                max_tokens=500  # 限制输出token数量，约200-300个中文字
             )
             optimized_prompt = completion.choices[0].message.content
             logger.info(f"优化成功：{optimized_prompt[:50]}...")
+            
+            # 检查实际输出内容长度
+            actual_length = len(optimized_prompt)
+            logger.info(f"实际输出内容长度: {actual_length} 字符")
 
             print("输入Token:", completion.usage.prompt_tokens)
             print("输出Token:", completion.usage.completion_tokens)
             print("总计Token:", completion.usage.total_tokens)
+            print("实际输出字符数:", actual_length)
+            
+            # 如果token数异常高，使用估算值代替
+            # 中文约1.5-2字符/token，英文约4字符/token
+            estimated_output_tokens = min(actual_length // 2, 500)  # 估算，上限500
+            if completion.usage.completion_tokens > 1000:
+                logger.warning(f"Token计数异常({completion.usage.completion_tokens})，使用估算值: {estimated_output_tokens}")
 
             # 记录 token 使用情况
             try:
@@ -201,16 +212,16 @@ class PromptOptimizer:
         elif style_info.get('camera_motion'):
             motion_desc = self.camera_motions.get(style_info['camera_motion'], '')
         
-        system_prompt = f"""你是一位专业的 AI 绘画提示词工程师。
-请将中文分镜描述转换为详细的英文提示词，用于 AI 视频生成。
+        system_prompt = f"""You are a professional AI prompt engineer.
+Convert Chinese storyboard descriptions into detailed English prompts for AI video generation.
 
-要求：
-1. 使用英文输出
-2. 包含详细的视觉元素（主体、背景、光影、色彩）
-3. 包含镜头运动描述：{motion_desc if motion_desc else '平滑的镜头运动'}
-4. 包含风格关键词：电影感、高质量、4K
-5. 输出 100-150 个单词
-6. 只输出提示词，不要其他内容"""
+Requirements:
+1. Output in pure English
+2. Include detailed subjects, background, lighting, and color details
+3. Add camera movement: {motion_desc if motion_desc else 'smooth camera movement'}
+4. Add cinematic, high quality, 4K style keywords
+5. 100-150 words in total
+6. Only output the prompt, no extra text"""
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -221,7 +232,7 @@ class PromptOptimizer:
             "model": "qwen3.5-plus",
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"请将这个分镜描述转换为英文提示词：{shot_description}"}
+                {"role": "user", "content": f"将这个分镜描述转换为英文提示词：{shot_description}"}
             ]
         }
         

@@ -42,14 +42,6 @@ export async function searchScripts(params?: {
 }
 
 /**
- * 确认剧本
- */
-export async function confirmScript(scriptId: number): Promise<{ success: boolean; task_id: string }> {
-  const response = await api.put(`/scripts/${scriptId}/confirm`)
-  return response.data
-}
-
-/**
  * 删除剧本
  */
 export async function deleteScript(scriptId: number): Promise<{ success: boolean; deleted_files: string[] }> {

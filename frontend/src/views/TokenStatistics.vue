@@ -58,7 +58,7 @@
     <!-- 详细记录表格 -->
     <div class="table-section">
       <h3>使用记录详情</h3>
-      <el-table :data="usageList" stripe style="width: 100%" v-loading="tableLoading">
+      <el-table :data="usageList" stripe style="width: 100%" v-loading="tableLoading" :key="tableKey">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="model_type" label="模型类型" width="120">
           <template #default="{ row }">
@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { getTokenStatistics, getTokenUsageList, type TokenUsage, type TokenStatistics } from '@/api/tokens'
 
@@ -146,6 +146,7 @@ const usageList = ref<TokenUsage[]>([])
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const tableKey = ref(0)  // 用于强制刷新表格
 const dateRange = ref<[Date, Date] | null>(null)
 const detailVisible = ref(false)
 const currentDetail = ref<TokenUsage | null>(null)
@@ -158,8 +159,9 @@ let dailyChart: echarts.ECharts | null = null
 let modelTypeChart: echarts.ECharts | null = null
 let modelNameChart: echarts.ECharts | null = null
 
-// 格式化数字
-const formatNumber = (num: number): string => {
+// 格式化数字（处理undefined/null情况）
+const formatNumber = (num: number | undefined | null): string => {
+  if (num === undefined || num === null) return '0'
   return num.toLocaleString()
 }
 
@@ -208,14 +210,28 @@ const loadUsageList = async () => {
       startDate = dateRange.value[0].toISOString().split('T')[0]
       endDate = dateRange.value[1].toISOString().split('T')[0]
     }
+    console.log('Loading page:', currentPage.value, 'pageSize:', pageSize.value)
+    
+    // 先清空数据
+    usageList.value = []
+    
     const result = await getTokenUsageList({
       page: currentPage.value,
       per_page: pageSize.value,
       start_date: startDate,
       end_date: endDate
     })
-    usageList.value = result.records
+    console.log('Result:', result)
+    
     total.value = result.total
+    
+    // 使用nextTick确保DOM更新后再设置数据
+    await nextTick()
+    usageList.value = result.records
+    tableKey.value++
+    
+    // 再次等待DOM更新
+    await nextTick()
   } catch (error) {
     console.error('加载使用记录失败:', error)
   } finally {
@@ -238,10 +254,12 @@ const handleDateChange = () => {
 // 分页处理
 const handleSizeChange = (size: number) => {
   pageSize.value = size
+  currentPage.value = 1  // 改变每页条数时重置到第一页
   loadUsageList()
 }
 
 const handlePageChange = (page: number) => {
+  // 使用事件参数 page，确保使用正确的页码值
   currentPage.value = page
   loadUsageList()
 }

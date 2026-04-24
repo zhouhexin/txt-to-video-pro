@@ -88,36 +88,33 @@ class ScriptService:
 - 氛围：{style_info['atmosphere']}
 - 推荐运镜：{style_info['camera_motion']}"""
         
-        return f"""你是一位专业的视频剧本创作专家。请为以下需求创作一个完整的视频剧本：
-
-视频类型：{video_type}
+        return f"""专业视频剧本创作专家，按以下要求创作完整{video_type}剧本：
 主题：{theme}
 关键词：{keywords}
 分镜数量：{num_shots} 个镜头{style_note}
 
-请按照以下 JSON 格式输出剧本（只输出 JSON，不要其他文字）：
-{{
-    "title": "剧本标题",
-    "overview": "200 字以内的视频概述",
-    "style": "视频风格描述",
-    "shots": [
-        {{
-            "scene": "镜头 1: 场景名称",
-            "visual": "详细的画面描述，包括场景、人物、动作、道具等",
-            "camera": "运镜方式（push/pull/pan/tilt/zoom/orbit）",
-            "duration": 5,
-            "prompt": "用于 AI 绘图的英文 prompt，详细描述画面内容、风格、光影、构图等"
-        }}
-    ]
-}}
+格式：严格按指定 JSON 输出（仅 JSON，无其他文字），包含 title、overview（≤200 字）、style、shots（含 scene/visual/camera/duration/prompt）
+要求：{num_shots}个镜头，每个镜头 3-8 秒，
+运镜从 push/pull/pan/tilt/zoom/orbit 选，画面描述具体适配 AI 视频生成，
+每个镜头配详细英文 AI 绘图提示词（prompt），整体风格统一，符合{video_type}特点
+除prompt外，所有字段中文
+"""
 
-要求：
-1. 画面描述要具体、生动，适合 AI 视频生成
-2. 每个镜头的 prompt 要用英文，包含详细的视觉元素
-3. 运镜方式从 push/pull/pan/tilt/zoom/orbit 中选择
-4. 时长在 3-8 秒之间
-5. 整体风格要统一，符合{video_type}的特点"""
-
+    # 请按照以下 JSON 格式输出剧本（只输出 JSON，不要其他文字）：
+    # {{
+    #     "title": "剧本标题",
+    #     "overview": "200 字以内的视频概述",
+    #     "style": "视频风格描述",
+    #     "shots": [
+    #         {{
+    #             "scene": "镜头 1: 场景名称",
+    #             "visual": "详细的画面描述，包括场景、人物、动作、道具等",
+    #             "camera": "运镜方式（push/pull/pan/tilt/zoom/orbit）",
+    #             "duration": 5,
+    #             "prompt": "用于 AI 绘图的英文 prompt，详细描述画面内容、风格、光影、构图等"
+    #         }}
+    #     ]
+    # }}
     def _parse_script_response(self, content: str, video_type: str, theme: str, keywords: str) -> dict:
         """解析 AI 返回的剧本"""
         try:

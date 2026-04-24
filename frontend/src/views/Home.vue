@@ -4,8 +4,7 @@
     <el-card class="welcome-card" shadow="hover">
       <div class="welcome-content">
         <div class="welcome-text">
-<!--          <h1>🎬 AI 视频生成平台 <span class="pro-badge">Pro</span></h1>-->
-          <p class="subtitle">从剧本到成片，AI 驱动的全流程视频创作</p>
+          <h2>从剧本到成片，AI 驱动的全流程视频创作</h2>
           <p class="description">
             基于阿里云百炼大模型，支持智能剧本生成、自动分镜绘制、视频生成与合并
           </p>
@@ -73,43 +72,10 @@
       </el-col>
     </el-row>
 
-    <!-- 快速入口 -->
-    <el-card class="quick-access-card" shadow="hover">
-      <template #header>
-        <h2>⚡ 快速入口</h2>
-      </template>
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-button class="quick-btn" @click="router.push('/history')">
-            <el-icon><Document /></el-icon>
-            <span>历史记录</span>
-          </el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-button class="quick-btn" @click="router.push('/task-history')">
-            <el-icon><List /></el-icon>
-            <span>任务历史</span>
-          </el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-button class="quick-btn" @click="router.push('/statistics')">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>数据统计</span>
-          </el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-button class="quick-btn" @click="router.push('/token-statistics')">
-            <el-icon><Coin /></el-icon>
-            <span>Token 统计</span>
-          </el-button>
-        </el-col>
-      </el-row>
-    </el-card>
-
     <!-- 最近项目 -->
-    <el-card class="recent-card" shadow="hover">
+    <el-card class="section-card" shadow="hover">
       <template #header>
-        <div class="recent-header">
+        <div class="card-header">
           <h2>📁 最近项目</h2>
           <el-button link type="primary" @click="router.push('/history')">
             查看全部 <el-icon><ArrowRight /></el-icon>
@@ -148,7 +114,7 @@
     </el-card>
 
     <!-- 功能特性 -->
-    <el-card class="features-card" shadow="hover">
+    <el-card class="section-card" shadow="hover">
       <template #header>
         <h2>✨ 核心特性</h2>
       </template>
@@ -175,9 +141,11 @@
           </div>
         </el-col>
         <el-col :span="8">
-          <div class="feature-icon">💾</div>
-          <h4>任务管理</h4>
-          <p>完整的任务历史与成果管理</p>
+          <div class="feature-item">
+            <div class="feature-icon">💾</div>
+            <h4>任务管理</h4>
+            <p>完整的任务历史与成果管理</p>
+          </div>
         </el-col>
         <el-col :span="8">
           <div class="feature-item">
@@ -201,7 +169,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { VideoCamera, Document, List, DataAnalysis, ArrowRight, Coin } from '@element-plus/icons-vue'
+import { VideoCamera, ArrowRight } from '@element-plus/icons-vue'
 import { searchScripts, deleteScript } from '@/api/scripts'
 import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
@@ -270,52 +238,38 @@ onMounted(() => {
 
 .welcome-card {
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  background: linear-gradient(135deg, #e8ecf4 0%, #d5dce8 100%);
+  border: 1px solid #dcdfe6;
 }
 
 .welcome-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 10px;
 }
 
 .welcome-text {
   flex: 1;
-  color: white;
 }
 
-.welcome-text h1 {
-  font-size: 32px;
-  margin: 0 0 10px 0;
+.welcome-text h2 {
+  font-size: 20px;
+  margin: 0 0 8px 0;
   font-weight: 600;
-}
-
-.pro-badge {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 16px;
-  margin-left: 10px;
-  vertical-align: middle;
-}
-
-.subtitle {
-  font-size: 18px;
-  margin: 0 0 10px 0;
-  opacity: 0.95;
+  color: #333;
 }
 
 .description {
   font-size: 14px;
-  opacity: 0.9;
+  color: #666;
   margin: 0;
 }
 
 .welcome-actions {
   display: flex;
   gap: 15px;
+  flex-shrink: 0;
 }
 
 .steps-row {
@@ -329,7 +283,7 @@ onMounted(() => {
 }
 
 .step-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   border-color: #667eea;
 }
 
@@ -339,7 +293,7 @@ onMounted(() => {
 }
 
 .step-card h3 {
-  font-size: 18px;
+  font-size: 16px;
   margin: 10px 0;
   color: #333;
 }
@@ -362,46 +316,21 @@ onMounted(() => {
   margin: 5px 0;
 }
 
-.quick-access-card {
+.section-card {
   margin-bottom: 20px;
 }
 
-.quick-btn {
-  width: 100%;
-  height: 60px;
-  font-size: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.quick-btn .el-icon {
-  font-size: 24px;
-}
-
-.recent-card {
-  margin-bottom: 20px;
-}
-
-.recent-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.recent-header h2 {
+.card-header h2,
+.section-card h2 {
   margin: 0;
-  font-size: 18px;
-}
-
-.features-card {
-  margin-bottom: 20px;
-}
-
-.features-card h2 {
-  margin: 0;
-  font-size: 18px;
+  font-size: 20px;
+  color: #333;
 }
 
 .feature-item {

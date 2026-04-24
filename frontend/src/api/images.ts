@@ -38,13 +38,3 @@ export async function getTaskImages(taskId: string): Promise<{
   return response.data
 }
 
-/**
- * 重新生成分镜图
- */
-export async function regenerateImages(scriptId: number): Promise<{
-  new_task_id: string
-  status: string
-}> {
-  const response = await api.post('/images/regenerate', { script_id: scriptId })
-  return response.data
-}
