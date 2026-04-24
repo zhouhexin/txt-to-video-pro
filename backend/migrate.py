@@ -120,6 +120,72 @@ def migrate():
             print("✅ token_usage 表迁移完成")
         
         print("\n✅ 数据库迁移完成！")
+        
+        # 创建新表：task_audios, task_bgm, task_sfx
+        print("\n创建音频相关表...")
+        
+        if 'task_audios' not in tables:
+            print("  - 创建 task_audios 表")
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE task_audios (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        task_id VARCHAR(50) NOT NULL,
+                        shot_index INTEGER NOT NULL,
+                        file_path VARCHAR(500),
+                        duration FLOAT,
+                        voice_id VARCHAR(50),
+                        text TEXT,
+                        status VARCHAR(20) DEFAULT 'pending',
+                        error_message TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME,
+                        FOREIGN KEY (task_id) REFERENCES tasks(id)
+                    )
+                """))
+                conn.commit()
+        
+        if 'task_bgm' not in tables:
+            print("  - 创建 task_bgm 表")
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE task_bgm (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        task_id VARCHAR(50) NOT NULL,
+                        bgm_id VARCHAR(50),
+                        bgm_name VARCHAR(200),
+                        file_path VARCHAR(500),
+                        volume FLOAT DEFAULT 0.3,
+                        start_time FLOAT DEFAULT 0,
+                        end_time FLOAT,
+                        status VARCHAR(20) DEFAULT 'pending',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (task_id) REFERENCES tasks(id)
+                    )
+                """))
+                conn.commit()
+        
+        if 'task_sfx' not in tables:
+            print("  - 创建 task_sfx 表")
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE task_sfx (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        task_id VARCHAR(50) NOT NULL,
+                        shot_index INTEGER,
+                        sfx_id VARCHAR(50),
+                        sfx_name VARCHAR(200),
+                        file_path VARCHAR(500),
+                        volume FLOAT DEFAULT 0.5,
+                        start_offset FLOAT DEFAULT 0,
+                        status VARCHAR(20) DEFAULT 'pending',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (task_id) REFERENCES tasks(id)
+                    )
+                """))
+                conn.commit()
+        
+        print("✅ 音频相关表创建完成！")
 
 if __name__ == '__main__':
     migrate()

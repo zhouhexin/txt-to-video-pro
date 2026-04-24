@@ -1,0 +1,86 @@
+[
+  {
+    "id": "sfx_001",
+    "name": "鸟鸣声",
+    "file": "birds_chirping.wav",
+    "category": "自然",
+    "tags": ["鸟", "清晨", "自然", "户外"]
+  },
+  {
+    "id": "sfx_002",
+    "name": "流水声",
+    "file": "water_flow.wav",
+    "category": "自然",
+    "tags": ["水", "河流", "自然", "宁静"]
+  },
+  {
+    "id": "sfx_003",
+    "name": "风声",
+    "file": "wind_blowing.wav",
+    "category": "自然",
+    "tags": ["风", "户外", "自然"]
+  },
+  {
+    "id": "sfx_004",
+    "name": "人群嘈杂",
+    "file": "crowd_ambient.wav",
+    "category": "环境",
+    "tags": ["人群", "城市", "热闹"]
+  },
+  {
+    "id": "sfx_005",
+    "name": "雨声",
+    "file": "rain_falling.wav",
+    "category": "自然",
+    "tags": ["雨", "天气", "自然", "宁静"]
+  },
+  {
+    "id": "sfx_006",
+    "name": "雷声",
+    "file": "thunder.wav",
+    "category": "自然",
+    "tags": ["雷", "天气", "震撼"]
+  },
+  {
+    "id": "sfx_007",
+    "name": "海浪声",
+    "file": "ocean_waves.wav",
+    "category": "自然",
+    "tags": ["海", "浪", "自然", "广阔"]
+  },
+  {
+    "id": "sfx_008",
+    "name": "火焰燃烧",
+    "file": "fire_burning.wav",
+    "category": "自然",
+    "tags": ["火", "燃烧", "温暖"]
+  },
+  {
+    "id": "sfx_009",
+    "name": "脚步声",
+    "file": "footsteps.wav",
+    "category": "人物",
+    "tags": ["走路", "人物", "移动"]
+  },
+  {
+    "id": "sfx_010",
+    "name": "笑声",
+    "file": "laughter.wav",
+    "category": "人物",
+    "tags": ["笑", "快乐", "人物"]
+  },
+  {
+    "id": "sfx_011",
+    "name": "钟声",
+    "file": "bell_chime.wav",
+    "category": "建筑",
+    "tags": ["钟", "寺庙", "传统"]
+  },
+  {
+    "id": "sfx_012",
+    "name": "车辆驶过",
+    "file": "car_passing.wav",
+    "category": "城市",
+    "tags": ["车", "交通", "城市"]
+  }
+]

@@ -15,6 +15,9 @@
         v-model:first-last-mode="firstLastMode"
       />
       
+      <!-- 音频配置 -->
+      <AudioConfig ref="audioConfigRef" style="margin-top: 20px" />
+      
       <el-card class="video-card" style="margin-top: 20px">
         <template #header>
           <div class="card-header">
@@ -105,7 +108,9 @@ import { useTaskStore } from '@/stores/task'
 import { useUIStore } from '@/stores/ui'
 import { getTaskImages } from '@/api/images'
 import { generateVideo, getTaskVideos, mergeVideos, generateAllVideos } from '@/api/videos'
+import { generateAllAudios, mergeAudioVideo } from '@/api/audios'
 import VideoConfig from '@/components/VideoConfig.vue'
+import AudioConfig from '@/components/AudioConfig.vue'
 
 const router = useRouter()
 const scriptStore = useScriptStore()
@@ -117,6 +122,7 @@ const resolution = ref('480P')
 const firstLastMode = ref(false)
 const generatingAll = ref(false)
 const merging = ref(false)
+const audioConfigRef = ref<any>(null)
 const images = ref<any[]>([])
 const videos = ref<any[]>([])
 const mergedVideo = ref<any>(null)
@@ -274,9 +280,24 @@ const handleMerge = async () => {
   merging.value = true
   
   try {
-    const result = await mergeVideos(taskStore.taskId)
+    // 如果启用了音频，先生成配音再合并
+    const audioConfig = audioConfigRef.value?.config
+    if (audioConfig?.enableVoice) {
+      uiStore.showInfo('正在生成配音...')
+      await generateAllAudios({
+        task_id: taskStore.taskId,
+        voice_id: audioConfig.voiceId
+      })
+    }
+    
+    // 合并音视频
+    const result = await mergeAudioVideo({
+      task_id: taskStore.taskId
+    })
+    
     mergedVideo.value = result
-    uiStore.showSuccess('视频合并成功')
+    const audioText = audioConfig?.enableVoice ? '（含配音）' : ''
+    uiStore.showSuccess(`视频合并成功${audioText}`)
   } catch (err: any) {
     uiStore.showError(err.message)
   } finally {

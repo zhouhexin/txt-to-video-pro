@@ -1,0 +1,92 @@
+[
+  {
+    "id": "bgm_001",
+    "name": "清晨阳光",
+    "file": "morning_sunshine.mp3",
+    "category": "自然",
+    "mood": "轻松",
+    "duration": 180,
+    "tags": ["清晨", "阳光", "希望", "开始"]
+  },
+  {
+    "id": "bgm_002",
+    "name": "古风韵",
+    "file": "ancient_style.mp3",
+    "category": "古风",
+    "mood": "优雅",
+    "duration": 240,
+    "tags": ["古风", "传统", "中国风", "典雅"]
+  },
+  {
+    "id": "bgm_003",
+    "name": "城市脉搏",
+    "file": "city_pulse.mp3",
+    "category": "现代",
+    "mood": "活力",
+    "duration": 200,
+    "tags": ["城市", "现代", "节奏", "活力"]
+  },
+  {
+    "id": "bgm_004",
+    "name": "宁静夜晚",
+    "file": "quiet_night.mp3",
+    "category": "自然",
+    "mood": "安静",
+    "duration": 220,
+    "tags": ["夜晚", "宁静", "星空", "思考"]
+  },
+  {
+    "id": "bgm_005",
+    "name": "山水之间",
+    "file": "mountain_water.mp3",
+    "category": "自然",
+    "mood": "悠扬",
+    "duration": 260,
+    "tags": ["山水", "自然", "旅行", "风景"]
+  },
+  {
+    "id": "bgm_006",
+    "name": "欢乐时光",
+    "file": "happy_time.mp3",
+    "category": "生活",
+    "mood": "快乐",
+    "duration": 190,
+    "tags": ["欢乐", "庆祝", "聚会", "开心"]
+  },
+  {
+    "id": "bgm_007",
+    "name": "史诗征程",
+    "file": "epic_journey.mp3",
+    "category": "史诗",
+    "mood": "激昂",
+    "duration": 300,
+    "tags": ["史诗", "宏大", "战斗", "英雄"]
+  },
+  {
+    "id": "bgm_008",
+    "name": "田园风光",
+    "file": "pastoral.mp3",
+    "category": "自然",
+    "mood": "悠闲",
+    "duration": 210,
+    "tags": ["田园", "乡村", "悠闲", "自然"]
+  },
+  {
+    "id": "bgm_009",
+    "name": "科技感",
+    "file": "tech_future.mp3",
+    "category": "现代",
+    "mood": "未来",
+    "duration": 240,
+    "tags": ["科技", "未来", "电子", "创新"]
+  },
+  {
+    "id": "bgm_010",
+    "name": "温馨家园",
+    "file": "warm_home.mp3",
+    "category": "生活",
+    "mood": "温暖",
+    "duration": 200,
+    "tags": ["温馨", "家庭", "温暖", "幸福"]
+  }
+]

@@ -30,6 +30,7 @@ def create_app(config_class=Config):
     from .routes.tasks import tasks_bp
     from .routes.statistics import statistics_bp
     from .routes.tokens import tokens_bp
+    from .routes.audios import audios_bp
     
     app.register_blueprint(scripts_bp, url_prefix=app.config['API_PREFIX'])
     app.register_blueprint(images_bp, url_prefix=app.config['API_PREFIX'])
@@ -39,6 +40,7 @@ def create_app(config_class=Config):
     app.register_blueprint(tasks_bp, url_prefix=app.config['API_PREFIX'])
     app.register_blueprint(statistics_bp, url_prefix=app.config['API_PREFIX'])
     app.register_blueprint(tokens_bp, url_prefix=app.config['API_PREFIX'])
+    app.register_blueprint(audios_bp, url_prefix=app.config['API_PREFIX'])
     
     # 创建数据库表
     with app.app_context():
