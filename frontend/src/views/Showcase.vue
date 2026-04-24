@@ -100,6 +100,20 @@
         </div>
         
         <el-empty v-else description="还没有生成视频" />
+        
+        <!-- 配音功能（新增） -->
+        <el-divider />
+        
+        <div class="voiceover-section">
+          <VoiceoverConfig
+            v-if="selectedTask"
+            :task-id="selectedTask.id"
+            :script-id="selectedTask.script_id"
+            :total-shots="selectedTask.script_shots?.length || 0"
+            @complete="handleVoiceoverComplete"
+            @merged="handleVoiceoverMerged"
+          />
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -110,6 +124,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { Download } from '@element-plus/icons-vue'
+import VoiceoverConfig from '@/components/VoiceoverConfig.vue'
 
 const router = useRouter()
 
@@ -167,18 +182,44 @@ const handleView = async (task: any) => {
   selectedTask.value = task
   showDetailDialog.value = true
   
-  // 加载任务的图片和视频
+  // 加载任务的图片、视频和配音
   try {
-    const [imgRes, vidRes] = await Promise.all([
+    const [imgRes, vidRes, audioRes] = await Promise.all([
       axios.get(`/api/v1/images/${task.id}`),
-      axios.get(`/api/v1/videos/${task.id}`)
+      axios.get(`/api/v1/videos/${task.id}`),
+      axios.get(`/api/v1/audios/${task.id}`)
     ])
     
     taskImages.value = imgRes.data.images?.filter((img: any) => img.status === 'completed') || []
     taskVideos.value = vidRes.data.videos?.filter((vid: any) => vid.status === 'completed') || []
     mergedVideo.value = vidRes.data.merged_video
+    
+    // 加载配音列表（如果有）
+    if (audioRes.data.audios?.length > 0) {
+      console.log('已存在配音:', audioRes.data.audios.length)
+    }
   } catch (error) {
     console.error('加载任务成果失败:', error)
+  }
+}
+
+const handleVoiceoverComplete = (voiceovers: any[]) => {
+  console.log('配音生成完成:', voiceovers.length)
+  // 可以刷新视频列表或显示提示
+}
+
+const handleVoiceoverMerged = (videoUrl: string) => {
+  console.log('配音已合并:', videoUrl)
+  // 刷新合并视频
+  if (selectedTask.value) {
+    setTimeout(async () => {
+      try {
+        const vidRes = await axios.get(`/api/v1/videos/${selectedTask.value.id}`)
+        mergedVideo.value = vidRes.data.merged_video
+      } catch (error) {
+        console.error('刷新视频失败:', error)
+      }
+    }, 2000)
   }
 }
 
@@ -243,5 +284,11 @@ const formatDate = (dateStr: string) => {
   margin-top: 15px;
   display: flex;
   gap: 10px;
+}
+
+.voiceover-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7ed;
 }
 </style>

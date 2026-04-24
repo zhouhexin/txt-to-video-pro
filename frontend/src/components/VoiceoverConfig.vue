@@ -62,6 +62,18 @@
           已生成 {{ generatedCount }} / {{ totalCount }} 个分镜配音
         </p>
       </el-form-item>
+      
+      <el-form-item v-if="allCompleted">
+        <el-button 
+          type="success" 
+          size="large"
+          :loading="merging"
+          @click="handleMergeWithVoiceover"
+          style="width: 100%"
+        >
+          {{ merging ? '合并中...' : '🎬 合并配音到视频' }}
+        </el-button>
+      </el-form-item>
     </el-form>
     
     <!-- 配音列表预览 -->
@@ -89,7 +101,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, defineExpose } from 'vue'
-import { generateAllAudios, getTaskAudios } from '@/api/audios'
+import { generateAllAudios, getTaskAudios, mergeAudioVideo } from '@/api/audios'
+import { useUIStore } from '@/stores/ui'
 
 interface VoiceoverConfig {
   voiceId: string
@@ -118,10 +131,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'complete', voiceovers: any[]): void
+  (e: 'merged', videoUrl: string): void
 }>()
 
+const hasVoiceover = computed(() => voiceovers.value.length > 0)
+const allCompleted = computed(() => {
+  return voiceovers.value.length > 0 && 
+         voiceovers.value.every((v: any) => v.status === 'completed')
+})
+
+const uiStore = useUIStore()
 const generating = ref(false)
 const generatedCount = ref(0)
+const merging = ref(false)
 const voiceovers = ref<any[]>([])
 
 const totalCount = computed(() => props.totalShots)
@@ -153,11 +175,42 @@ const handleGenerateVoiceover = async () => {
     
     emit('complete', voiceovers.value)
     
+    if (result.success_count > 0) {
+      uiStore.showSuccess(`配音生成成功！${result.success_count}个分镜`)
+    }
+    if (result.fail_count > 0) {
+      uiStore.showWarning(`${result.success_count}个成功，${result.fail_count}个失败`)
+    }
+    
   } catch (err: any) {
     console.error('生成配音失败:', err)
+    uiStore.showError('生成配音失败：' + err.message)
     throw err
   } finally {
     generating.value = false
+  }
+}
+
+const handleMergeWithVoiceover = async () => {
+  if (!props.taskId) return
+  
+  merging.value = true
+  
+  try {
+    uiStore.showInfo('正在合并配音到视频...')
+    
+    const result = await mergeAudioVideo({
+      task_id: props.taskId
+    })
+    
+    emit('merged', result.final_url)
+    uiStore.showSuccess('配音合并成功！')
+    
+  } catch (err: any) {
+    console.error('合并配音失败:', err)
+    uiStore.showError('合并失败：' + err.message)
+  } finally {
+    merging.value = false
   }
 }
 
