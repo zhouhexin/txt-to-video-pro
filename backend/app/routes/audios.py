@@ -44,7 +44,7 @@ def generate_audio():
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"生成配音失败：{e}")
+        # logger.error(f"生成配音失败：{e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -96,7 +96,7 @@ def generate_all_audios():
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"批量生成配音失败：{e}")
+        # logger.error(f"批量生成配音失败：{e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -166,7 +166,7 @@ def recommend_sfx():
         return jsonify({'recommendations': recommendations})
         
     except Exception as e:
-        logger.error(f"推荐音效失败：{e}")
+        # logger.error(f"推荐音效失败：{e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -225,7 +225,7 @@ def set_bgm():
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"设置 BGM 失败：{e}")
+        # logger.error(f"设置 BGM 失败：{e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -252,5 +252,5 @@ def merge_audio_video():
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"合并音视频失败：{e}")
+        # logger.error(f"合并音视频失败：{e}")
         return jsonify({'error': str(e)}), 500

@@ -9,7 +9,7 @@ from datetime import datetime
 from app import db
 from app.models import TaskAudio, TaskVideo, TaskBGM, TaskSFX
 from .token_service import TokenService
-
+import subprocess
 logger = logging.getLogger(__name__)
 
 
@@ -150,7 +150,6 @@ class AudioService:
     
     def _get_audio_duration(self, file_path: str) -> float:
         """使用 ffprobe 获取音频时长"""
-        import subprocess
         
         cmd = [
             'ffprobe', '-v', 'error',
