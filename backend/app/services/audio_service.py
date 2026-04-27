@@ -249,6 +249,7 @@ class AudioService:
         
         task_dir = os.path.join(self.output_dir, task_id, 'videos')
         output_path = os.path.join(task_dir, output_filename)
+        os.makedirs(task_dir, exist_ok=True)
         
         # 如果没有任何音频，直接返回原合并视频
         if not audios and not bgms and not sfxs:
@@ -262,75 +263,128 @@ class AudioService:
                 video_service = VideoService(None, self.output_dir)
                 return video_service.merge_videos(task_id)
         
-        # 构建 ffmpeg 输入和滤镜
-        inputs = []
-        filter_complex = []
-        output_maps = []
+        # ========== 两步合并法 ==========
+        # Step 1: 先拼接所有视频片段
+        # Step 2: 再拼接所有配音并与视频对齐
         
-        # 添加视频输入（第一个视频流作为主视频）
-        for i, video in enumerate(videos):
-            inputs.extend(['-i', video.file_path])
+        # Step 1: 拼接视频
+        video_list_file = os.path.join(task_dir, 'video_list.txt')
+        with open(video_list_file, 'w') as f:
+            for video in videos:
+                f.write(f"file '{os.path.abspath(video.file_path)}'\n")
         
-        # 添加配音输入
-        audio_inputs_start = len(videos)
-        for i, audio in enumerate(audios):
-            inputs.extend(['-i', audio.file_path])
+        temp_merged_video = os.path.join(task_dir, 'temp_merged_video.mp4')
+        cmd_merge_video = [
+            'ffmpeg', '-y',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', video_list_file,
+            '-c', 'copy',
+            temp_merged_video
+        ]
         
-        # 添加 BGM 输入
-        bgm_inputs_start = audio_inputs_start + len(audios)
-        for bgm in bgms:
-            inputs.extend(['-i', bgm.file_path])
+        logger.info("Step 1: 拼接视频片段...")
+        result = subprocess.run(cmd_merge_video, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            logger.error(f"视频拼接失败：{result.stderr}")
+            raise Exception(f"视频拼接失败：{result.stderr}")
         
-        # 添加音效输入
-        sfx_inputs_start = bgm_inputs_start + len(bgms)
-        for sfx in sfxs:
-            inputs.extend(['-i', sfx.file_path])
-        
-        # 简化处理：仅合并第一个配音到视频
-        # 完整实现需要复杂的时间轴对齐
+        # Step 2: 拼接所有配音音频
         if audios:
-            # 使用第一个配音
-            audio_index = audio_inputs_start
-            filter_complex.append(
-                f"[{audio_index}:a]volume=1[audio_voice]"
-            )
+            audio_list_file = os.path.join(task_dir, 'audio_list.txt')
+            with open(audio_list_file, 'w') as f:
+                for audio in audios:
+                    f.write(f"file '{os.path.abspath(audio.file_path)}'\n")
             
-            if bgms:
-                # 混合 BGM
-                bgm_index = bgm_inputs_start
-                bgm_volume = bgms[0].volume if bgms else 0.3
-                filter_complex.append(
-                    f"[{bgm_index}:a]volume={bgm_volume}[audio_bgm]"
-                )
-                filter_complex.append(
-                    f"[audio_voice][audio_bgm]amix=inputs=2:duration=shortest[audio_out]"
-                )
-                output_maps.extend(['-map', '0:v', '-map', '[audio_out]'])
-            else:
-                output_maps.extend(['-map', '0:v', '-map', '[audio_voice]'])
+            temp_merged_audio = os.path.join(task_dir, 'temp_merged_audio.aac')
+            cmd_merge_audio = [
+                'ffmpeg', '-y',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', audio_list_file,
+                '-c:a', 'aac',
+                temp_merged_audio
+            ]
+            
+            logger.info("Step 2: 拼接配音音频...")
+            result = subprocess.run(cmd_merge_audio, capture_output=True, text=True, timeout=300)
+            if result.returncode != 0:
+                logger.error(f"音频拼接失败：{result.stderr}")
+                raise Exception(f"音频拼接失败：{result.stderr}")
         else:
-            # 无配音，仅复制原视频
-            output_maps.extend(['-map', '0:v', '-map', '0:a'])
+            temp_merged_audio = None
+        
+        # Step 3: 将配音、BGM、音效与视频合并
+        inputs = ['-i', temp_merged_video]
+        filter_complex = []
+        output_maps = ['-map', '0:v']
+        
+        audio_input_index = 1
+        
+        # 添加配音
+        if temp_merged_audio and os.path.exists(temp_merged_audio):
+            inputs.extend(['-i', temp_merged_audio])
+            filter_complex.append(f"[{audio_input_index}:a]volume=1[audio_voice]")
+            audio_input_index += 1
+        
+        # 添加 BGM
+        if bgms:
+            for i, bgm in enumerate(bgms):
+                bgm_input_idx = audio_input_index
+                inputs.extend(['-i', bgm.file_path])
+                bgm_volume = bgm.volume if hasattr(bgm, 'volume') and bgm.volume else 0.3
+                filter_complex.append(f"[{bgm_input_idx}:a]volume={bgm_volume}[audio_bgm_{i}]")
+                audio_input_index += 1
+            
+            # 混合所有 BGM
+            if len(bgms) == 1:
+                if audios:
+                    filter_complex.append("[audio_bgm_0][audio_voice]amix=inputs=2:duration=shortest[audio_out]")
+                else:
+                    filter_complex.append("[audio_bgm_0]amix=inputs=1:duration=shortest[audio_out]")
+            else:
+                bgm_mix_inputs = '+'.join([f'audio_bgm_{i}' for i in range(len(bgms))])
+                if audios:
+                    filter_complex.append(f"[{bgm_mix_inputs}]amix=inputs={len(bgms)}:duration=shortest[audio_bgm_mix]")
+                    filter_complex.append("[audio_bgm_mix][audio_voice]amix=inputs=2:duration=shortest[audio_out]")
+                else:
+                    filter_complex.append(f"[{bgm_mix_inputs}]amix=inputs={len(bgms)}:duration=shortest[audio_out]")
+            output_maps.append('[audio_out]')
+        elif audios:
+            # 仅有配音，无 BGM
+            output_maps.append('[audio_voice]')
         
         cmd = ['ffmpeg', '-y'] + inputs
         
         if filter_complex:
-            cmd.extend(['-filter_complex', ';'.join(filter_complex)])
+            # 修正 filter_complex 格式
+            filter_str = ';'.join(filter_complex)
+            cmd.extend(['-filter_complex', filter_str])
         
-        cmd.extend(output_maps)
+        cmd.extend(output_maps if len(output_maps) > 1 else ['-map', '0:v', '-map', '0:a'])
         cmd.extend(['-c:v', 'copy', '-c:a', 'aac', '-shortest'])
         cmd.append(output_path)
         
-        logger.info(f"ffmpeg 命令：{' '.join(cmd)}")
+        logger.info(f"Step 3: 最终合并，ffmpeg 命令：{' '.join(cmd)}")
         
         try:
-            import subprocess
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
             if result.returncode != 0:
-                logger.error(f"ffmpeg 合并失败：{result.stderr}")
-                raise Exception(f"音视频合并失败：{result.stderr}")
+                logger.error(f"ffmpeg 最终合并失败：{result.stderr}")
+                # 如果复杂合并失败，尝试简单合并
+                logger.info("尝试简单合并模式...")
+                return self._simple_merge_audio_video(task_id, videos, audios, bgms, sfxs, output_path, temp_merged_video)
             
             logger.info(f"音视频合并成功：{output_path}")
+            
+            # 清理临时文件
+            try:
+                os.remove(temp_merged_video)
+                if temp_merged_audio and os.path.exists(temp_merged_audio):
+                    os.remove(temp_merged_audio)
+            except:
+                pass
+            
             return output_path
             
         except subprocess.TimeoutExpired:
@@ -339,6 +393,39 @@ class AudioService:
         except FileNotFoundError:
             logger.error("ffmpeg 未安装")
             raise Exception("ffmpeg 未安装，请安装后重试")
+    
+    def _simple_merge_audio_video(self, task_id: str, videos: list, audios: list, 
+                                   bgms: list, sfxs: list, output_path: str,
+                                   temp_merged_video: str) -> str:
+        """简单合并模式：仅添加第一个配音或 BGM"""
+        inputs = ['-i', temp_merged_video]
+        
+        if audios and os.path.exists(audios[0].file_path):
+            inputs.extend(['-i', audios[0].file_path])
+            cmd = ['ffmpeg', '-y'] + inputs + [
+                '-map', '0:v', '-map', '1:a',
+                '-c:v', 'copy', '-c:a', 'aac', '-shortest',
+                output_path
+            ]
+        elif bgms and os.path.exists(bgms[0].file_path):
+            inputs.extend(['-i', bgms[0].file_path])
+            cmd = ['ffmpeg', '-y'] + inputs + [
+                '-map', '0:v', '-map', '1:a',
+                '-c:v', 'copy', '-c:a', 'aac', '-shortest',
+                output_path
+            ]
+        else:
+            # 无任何音频，复制原视频
+            import shutil
+            shutil.copy(temp_merged_video, output_path)
+            return output_path
+        
+        logger.info(f"简单合并：{' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0:
+            raise Exception(f"简单合并失败：{result.stderr}")
+        
+        return output_path
     
     def get_task_audios(self, task_id: str) -> list:
         """获取任务的所有配音"""
