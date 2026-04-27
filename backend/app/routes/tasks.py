@@ -14,6 +14,7 @@ def get_tasks():
         status = request.args.get('status')
         script_id = request.args.get('script_id', type=int)
         limit = request.args.get('limit', 50, type=int)
+        include_script = request.args.get('include_script', 'false').lower() == 'true'
         
         query = Task.query
         
@@ -26,7 +27,7 @@ def get_tasks():
         tasks = query.all()
         
         return jsonify({
-            'tasks': [t.to_dict() for t in tasks],
+            'tasks': [t.to_dict(include_script=include_script) for t in tasks],
             'total': len(tasks)
         })
         

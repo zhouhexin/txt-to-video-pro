@@ -24,9 +24,9 @@ class Task(db.Model):
     images = db.relationship('TaskImage', backref='task', lazy='dynamic', cascade='all, delete-orphan')
     videos = db.relationship('TaskVideo', backref='task', lazy='dynamic', cascade='all, delete-orphan')
     
-    def to_dict(self):
+    def to_dict(self, include_script=False):
         """转换为字典"""
-        return {
+        data = {
             'id': self.id,
             'script_id': self.script_id,
             'status': self.status,
@@ -36,6 +36,15 @@ class Task(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        
+        # 如果需要包含剧本信息
+        if include_script and self.script:
+            data['script_title'] = self.script.title
+            data['script_theme'] = self.script.theme
+            data['script_video_type'] = self.script.video_type
+            data['script_shots'] = self.script.shots
+        
+        return data
     
     def __repr__(self):
         return f'<Task {self.id}>'

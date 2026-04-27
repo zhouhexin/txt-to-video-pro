@@ -162,10 +162,15 @@ const loadCompletedTasks = async () => {
     const response = await axios.get('/api/v1/tasks', {
       params: {
         status: 'completed',
-        limit: 50
+        limit: 50,
+        include_script: 'true'  // 包含剧本信息
       }
     })
     completedTasks.value = response.data.tasks || []
+    console.log('加载任务完成:', completedTasks.value.length, '个')
+    if (completedTasks.value.length > 0) {
+      console.log('示例任务:', completedTasks.value[0])
+    }
   } catch (error: any) {
     console.error('加载任务失败:', error)
   } finally {
