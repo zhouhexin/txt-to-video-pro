@@ -25,21 +25,22 @@
         v-loading="loading"
         @row-click="handleRowClick"
       >
-        <el-table-column prop="script_title" label="剧本标题" min-width="200" />
-        <el-table-column prop="script_theme" label="主题" width="150" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="script_title" label="剧本标题" min-width="120" />
+        <el-table-column prop="script_theme" label="主题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="script_video_type" label="类型" width="100" />
+        <el-table-column prop="status" label="状态" width="90">
           <template #default="{ row }">
             <el-tag type="success">已完成</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180">
+        <el-table-column prop="created_at" label="创建时间" width="160">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click.stop="handleView(row)">查看成果</el-button>
+            <el-button size="small" type="primary" @click.stop="handleView(row)">查看</el-button>
           </template>
         </el-table-column>
       </el-table>
