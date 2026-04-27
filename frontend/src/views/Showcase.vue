@@ -107,6 +107,7 @@
         <div class="voiceover-section">
           <VoiceoverConfig
             v-if="selectedTask"
+            ref="voiceoverRef"
             :task-id="selectedTask.id"
             :script-id="selectedTask.script_id"
             :total-shots="selectedTask.script_shots?.length || 0"
@@ -137,6 +138,8 @@ const selectedTask = ref<any>(null)
 const taskImages = ref<any[]>([])
 const taskVideos = ref<any[]>([])
 const mergedVideo = ref<any>(null)
+const taskAudios = ref<any[]>([])
+const voiceoverRef = ref<any>(null)
 
 const filteredTasks = computed(() => {
   if (!searchQuery.value) {
@@ -193,10 +196,17 @@ const handleView = async (task: any) => {
     taskImages.value = imgRes.data.images?.filter((img: any) => img.status === 'completed') || []
     taskVideos.value = vidRes.data.videos?.filter((vid: any) => vid.status === 'completed') || []
     mergedVideo.value = vidRes.data.merged_video
+    taskAudios.value = audioRes.data.audios?.filter((a: any) => a.status === 'completed') || []
     
-    // 加载配音列表（如果有）
-    if (audioRes.data.audios?.length > 0) {
-      console.log('已存在配音:', audioRes.data.audios.length)
+    // 如果有已生成的配音，自动加载到 VoiceoverConfig 组件
+    if (taskAudios.value.length > 0 && voiceoverRef.value) {
+      console.log('已存在配音:', taskAudios.value.length, '个')
+      // 等待组件挂载后加载
+      setTimeout(() => {
+        if (voiceoverRef.value && voiceoverRef.value.loadVoiceovers) {
+          voiceoverRef.value.loadVoiceovers()
+        }
+      }, 100)
     }
   } catch (error) {
     console.error('加载任务成果失败:', error)

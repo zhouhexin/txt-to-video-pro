@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, defineExpose } from 'vue'
+import { ref, reactive, computed, defineExpose, onMounted } from 'vue'
 import { generateAllAudios, getTaskAudios, mergeAudioVideo } from '@/api/audios'
 import { useUIStore } from '@/stores/ui'
 
@@ -145,8 +145,7 @@ const generating = ref(false)
 const generatedCount = ref(0)
 const merging = ref(false)
 const voiceovers = ref<any[]>([])
-
-const totalCount = computed(() => props.totalShots)
+const totalCount = ref(props.totalShots)
 
 const handlePreviewVoice = () => {
   const voiceName = voices[config.voiceId as keyof typeof voices]
@@ -214,11 +213,21 @@ const handleMergeWithVoiceover = async () => {
   }
 }
 
+// 组件挂载时自动加载已有配音
+onMounted(async () => {
+  if (props.taskId) {
+    await loadVoiceovers()
+  }
+})
+
 const loadVoiceovers = async () => {
   try {
     const result = await getTaskAudios(props.taskId)
-    voiceovers.value = result.audios || []
-    generatedCount.value = voiceovers.value.filter((v: any) => v.status === 'completed').length
+    voiceovers.value = result.audios?.filter((a: any) => a.status === 'completed') || []
+    generatedCount.value = voiceovers.value.length
+    if (voiceovers.value.length > 0) {
+      totalCount.value = Math.max(props.totalShots, voiceovers.value.length)
+    }
   } catch (error) {
     console.error('加载配音失败:', error)
   }
