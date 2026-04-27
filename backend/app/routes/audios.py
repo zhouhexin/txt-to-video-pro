@@ -10,6 +10,7 @@ from app.services.audio_service import AudioService
 from app.services.bgm_service import BGMService
 
 audios_bp = Blueprint('audios', __name__)
+logger = logging.getLogger(__name__)
 
 
 @audios_bp.route('/audios/generate', methods=['POST'])
