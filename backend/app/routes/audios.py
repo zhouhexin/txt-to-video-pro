@@ -58,18 +58,30 @@ def generate_all_audios():
         task_id = data.get('task_id')
         voice_id = data.get('voice_id', 'xiaoyun')
         script_id = data.get('script_id')
+        voiceovers = data.get('voiceovers')  # 用户输入的配音文本列表 [{shot_index, text}, ...]
         
         if not task_id:
             return jsonify({'error': 'task_id 不能为空'}), 400
         
-        # 从剧本获取旁白文本
+        # 优先使用用户输入的配音文本
         shots = []
-        if script_id:
+        if voiceovers:
+            # 使用用户输入的配音文本
+            for vo in voiceovers:
+                shot_index = vo.get('shot_index')
+                text = vo.get('text', '')
+                if text and shot_index is not None:
+                    shots.append({
+                        'index': shot_index,
+                        'text': text
+                    })
+        elif script_id:
+            # 从剧本获取旁白文本（回退方案）
             script = Script.query.get(script_id)
             if script and script.shots:
                 for i, shot in enumerate(script.shots):
-                    # 使用 visual 字段作为配音文本，或者可以添加 narration 字段
-                    text = shot.get('narration') or shot.get('visual', '')
+                    # 优先使用 narration 字段，其次使用 voiceover 字段，最后使用 visual
+                    text = shot.get('voiceover') or shot.get('narration') or shot.get('visual', '')
                     if text:
                         shots.append({
                             'index': i,

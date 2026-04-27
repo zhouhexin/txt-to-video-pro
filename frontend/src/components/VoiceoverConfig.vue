@@ -13,10 +13,33 @@
       :closable="false"
       style="margin-bottom: 20px"
     >
-      <p>• 系统将使用分镜的画面描述作为配音文本</p>
+      <p>• 请为每个分镜输入配音文本</p>
       <p>• 生成时间：约 2-5 秒/100 字</p>
       <p>• 完全免费（Edge TTS）</p>
     </el-alert>
+    
+    <!-- 配音文本输入 -->
+    <el-card shadow="hover" style="margin-bottom: 20px">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <h4 style="margin: 0">📝 配音文本</h4>
+          <el-button size="small" @click="handleFillFromVisual">
+            🔄 从画面描述填充
+          </el-button>
+        </div>
+      </template>
+      
+      <div v-for="(shot, index) in shots" :key="index" class="shot-input">
+        <div class="shot-label">镜头 {{ index + 1 }}</div>
+        <el-input
+          v-model="shot.text"
+          type="textarea"
+          :rows="2"
+          placeholder="请输入该分镜的配音文本..."
+          resize="vertical"
+        />
+      </div>
+    </el-card>
     
     <el-form :model="config" label-width="120px">
       <el-form-item label="选择音色">
@@ -147,6 +170,48 @@ const merging = ref(false)
 const voiceovers = ref<any[]>([])
 const totalCount = ref(props.totalShots)
 
+// 用户输入的配音文本
+const shots = ref<any[]>([])
+
+// 初始化 shots 数组
+const initShots = () => {
+  shots.value = []
+  for (let i = 0; i < props.totalShots; i++) {
+    shots.value.push({ shot_index: i, text: '' })
+  }
+}
+
+// 从已有配音加载文本
+const loadTextFromVoiceovers = () => {
+  if (voiceovers.value.length > 0) {
+    voiceovers.value.forEach((vo: any) => {
+      if (shots.value[vo.shot_index]) {
+        shots.value[vo.shot_index].text = vo.text
+      }
+    })
+  }
+}
+
+// 从画面描述填充
+const handleFillFromVisual = async () => {
+  try {
+    const response = await fetch(`/api/v1/scripts/${props.scriptId}`)
+    if (response.ok) {
+      const data = await response.json()
+      const scriptShots = data.shots || []
+      scriptShots.forEach((shot: any, index: number) => {
+        if (shots.value[index]) {
+          // 优先使用 voiceover 字段，其次 narration，最后 visual
+          shots.value[index].text = shot.voiceover || shot.narration || shot.visual || ''
+        }
+      })
+      uiStore.showSuccess('已从画面描述填充配音文本')
+    }
+  } catch (error) {
+    uiStore.showError('加载剧本失败')
+  }
+}
+
 const handlePreviewVoice = () => {
   const voiceName = voices[config.voiceId as keyof typeof voices]
   alert(`音色：${voiceName}\n\n这是 Edge TTS 免费服务，生成配音后才能试听实际效果。`)
@@ -155,15 +220,26 @@ const handlePreviewVoice = () => {
 const handleGenerateVoiceover = async () => {
   if (!props.taskId) return
   
+  // 验证配音文本
+  const voiceoverInputs = shots.value.filter(s => s.text && s.text.trim())
+  if (voiceoverInputs.length === 0) {
+    uiStore.showWarning('请至少输入一个分镜的配音文本')
+    return
+  }
+  
   generating.value = true
   generatedCount.value = 0
   
   try {
-    // 生成所有配音
+    // 生成所有配音，使用用户输入的文本
     const result = await generateAllAudios({
       task_id: props.taskId,
       script_id: props.scriptId,
-      voice_id: config.voiceId
+      voice_id: config.voiceId,
+      voiceovers: shots.value.map(s => ({
+        shot_index: s.shot_index,
+        text: s.text.trim()
+      }))
     })
     
     generatedCount.value = result.success_count || 0
@@ -216,6 +292,7 @@ const handleMergeWithVoiceover = async () => {
 // 组件挂载时自动加载已有配音
 onMounted(async () => {
   if (props.taskId) {
+    initShots()
     await loadVoiceovers()
   }
 })
@@ -227,6 +304,8 @@ const loadVoiceovers = async () => {
     generatedCount.value = voiceovers.value.length
     if (voiceovers.value.length > 0) {
       totalCount.value = Math.max(props.totalShots, voiceovers.value.length)
+      // 从已有配音加载文本
+      loadTextFromVoiceovers()
     }
   } catch (error) {
     console.error('加载配音失败:', error)
@@ -253,6 +332,21 @@ defineExpose({
 .card-header h3 {
   margin: 0;
   font-size: 18px;
+}
+
+.shot-input {
+  margin-bottom: 15px;
+}
+
+.shot-input:last-child {
+  margin-bottom: 0;
+}
+
+.shot-label {
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
 .voiceover-list {
