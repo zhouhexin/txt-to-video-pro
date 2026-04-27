@@ -338,30 +338,64 @@ class AudioService:
             # 混合所有 BGM
             if len(bgms) == 1:
                 if audios:
-                    filter_complex.append("[audio_bgm_0][audio_voice]amix=inputs=2:duration=shortest[audio_out]")
+                    filter_complex.append("[audio_bgm_0][audio_voice]amix=inputs=2:duration=first[audio_out]")
                 else:
-                    filter_complex.append("[audio_bgm_0]amix=inputs=1:duration=shortest[audio_out]")
+                    filter_complex.append("[audio_bgm_0]amix=inputs=1:duration=first[audio_out]")
             else:
                 bgm_mix_inputs = '+'.join([f'audio_bgm_{i}' for i in range(len(bgms))])
                 if audios:
-                    filter_complex.append(f"[{bgm_mix_inputs}]amix=inputs={len(bgms)}:duration=shortest[audio_bgm_mix]")
-                    filter_complex.append("[audio_bgm_mix][audio_voice]amix=inputs=2:duration=shortest[audio_out]")
+                    filter_complex.append(f"[{bgm_mix_inputs}]amix=inputs={len(bgms)}:duration=first[audio_bgm_mix]")
+                    filter_complex.append("[audio_bgm_mix][audio_voice]amix=inputs=2:duration=first[audio_out]")
                 else:
-                    filter_complex.append(f"[{bgm_mix_inputs}]amix=inputs={len(bgms)}:duration=shortest[audio_out]")
-            output_maps.append('[audio_out]')
+                    filter_complex.append(f"[{bgm_mix_inputs}]amix=inputs={len(bgms)}:duration=first[audio_out]")
+            output_maps.extend(['-map', '0:v', '-map', '[audio_out]'])
         elif audios:
-            # 仅有配音，无 BGM
-            output_maps.append('[audio_voice]')
+            # 仅有配音，无 BGM - 直接映射配音，不使用 shortest
+            cmd = ['ffmpeg', '-y'] + inputs
+            cmd.extend(['-filter_complex', ';'.join(filter_complex)])
+            cmd.extend(['-map', '0:v', '-map', '[audio_voice]'])
+            cmd.extend(['-c:v', 'copy', '-c:a', 'aac'])
+            cmd.append(output_path)
+            
+            logger.info(f"Step 3: 最终合并（仅配音），ffmpeg 命令：{' '.join(cmd)}")
+            
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                if result.returncode != 0:
+                    logger.error(f"ffmpeg 最终合并失败：{result.stderr}")
+                    raise Exception(f"合并失败：{result.stderr}")
+                
+                logger.info(f"音视频合并成功：{output_path}")
+                
+                # 清理临时文件
+                try:
+                    os.remove(temp_merged_video)
+                    if temp_merged_audio and os.path.exists(temp_merged_audio):
+                        os.remove(temp_merged_audio)
+                except:
+                    pass
+                
+                return output_path
+            except subprocess.TimeoutExpired:
+                logger.error("ffmpeg 合并超时")
+                raise Exception("合并超时")
+            except FileNotFoundError:
+                logger.error("ffmpeg 未安装")
+                raise Exception("ffmpeg 未安装，请安装后重试")
+        else:
+            # 无任何音频，复制原视频
+            import shutil
+            shutil.copy(temp_merged_video, output_path)
+            return output_path
         
+        # 有 BGM 的情况
         cmd = ['ffmpeg', '-y'] + inputs
         
         if filter_complex:
-            # 修正 filter_complex 格式
-            filter_str = ';'.join(filter_complex)
-            cmd.extend(['-filter_complex', filter_str])
+            cmd.extend(['-filter_complex', ';'.join(filter_complex)])
         
-        cmd.extend(output_maps if len(output_maps) > 1 else ['-map', '0:v', '-map', '0:a'])
-        cmd.extend(['-c:v', 'copy', '-c:a', 'aac', '-shortest'])
+        cmd.extend(output_maps)
+        cmd.extend(['-c:v', 'copy', '-c:a', 'aac'])
         cmd.append(output_path)
         
         logger.info(f"Step 3: 最终合并，ffmpeg 命令：{' '.join(cmd)}")
