@@ -75,8 +75,8 @@ def get_task_videos(task_id):
         if vid['status'] == 'completed':
             vid['url'] = f'/api/v1/files/video/{task_id}/shot_{vid["shot_index"]}.mp4'
     
-    # 检查合并视频
-    merged_video = video_service.check_merged_video(task_id)
+    # 检查合并视频：优先检查带配音的版本
+    merged_video = check_merged_video_with_voiceover(task_id)
     
     response = {
         'task_id': task_id,
@@ -87,6 +87,35 @@ def get_task_videos(task_id):
         response['merged_video'] = merged_video
     
     return jsonify(response)
+
+
+def check_merged_video_with_voiceover(task_id):
+    """检查合并视频，优先返回带配音的版本"""
+    import os
+    from flask import current_app
+    output_dir = current_app.config['OUTPUT_DIR']
+    
+    videos_dir = os.path.join(output_dir, task_id, 'videos')
+    
+    # 优先检查带配音的视频
+    final_with_audio = os.path.join(videos_dir, 'final_with_audio.mp4')
+    if os.path.exists(final_with_audio):
+        return {
+            'url': f'/api/v1/files/video/{task_id}/final_with_audio.mp4',
+            'status': 'completed',
+            'has_voiceover': True
+        }
+    
+    # 否则检查普通合并视频
+    merged_full = os.path.join(videos_dir, 'merged_full_video.mp4')
+    if os.path.exists(merged_full):
+        return {
+            'url': f'/api/v1/files/video/{task_id}/merged_full_video.mp4',
+            'status': 'completed',
+            'has_voiceover': False
+        }
+    
+    return None
 
 
 @videos_bp.route('/videos/generate-all', methods=['POST'])
