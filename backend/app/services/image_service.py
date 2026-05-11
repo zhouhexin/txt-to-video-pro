@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 import requests
 from datetime import datetime
 from app import db
@@ -7,6 +8,10 @@ from app.models import Task, TaskImage
 from .token_service import TokenService
 
 logger = logging.getLogger(__name__)
+
+# 重试配置
+MAX_RETRIES = 3
+RETRY_DELAY = 5  # 秒
 
 
 class ImageService:
@@ -23,8 +28,7 @@ class ImageService:
                        model: str = "qwen-image-2.0-pro",
                        size: str = "1024*1024",
                        theme: str = None,
-                       video_type: str = None,
-                       style: str = None) -> TaskImage:
+                       video_type: str = None) -> TaskImage:
         """
         生成单个分镜图
         
@@ -41,10 +45,10 @@ class ImageService:
         Returns:
             TaskImage 对象
         """
-        # 增强prompt（添加主题、视频类型、风格信息）
+        # 注意：主题/视频类型/风格信息已在 generate_shot_prompt 中包含，这里直接使用
         enhanced_prompt = self._enhance_prompt(prompt, theme, video_type, style)
-        logger.info(f"原始prompt: {prompt[:100]}...")
-        logger.info(f"增强后prompt: {enhanced_prompt[:100]}...")
+        # enhanced_prompt = prompt
+        logger.info(f"分镜提示词: {enhanced_prompt[:100]}...")
         
         # 查找或创建任务记录（避免重复记录）
         task_image = TaskImage.query.filter_by(
@@ -69,44 +73,59 @@ class ImageService:
         
         db.session.commit()
         
-        try:
-            # 调用阿里云万相 API（使用增强后的prompt）
-            image_result = self._call_image_api(enhanced_prompt, model, size, task_id)
-            
-            if image_result.get('success'):
-                # 下载图片
-                image_url = image_result['image_urls'][0]
-                image_data = self._download_image(image_url)
+        # 重试机制：总共尝试 MAX_RETRIES 次
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                # 调用阿里云万相 API（使用增强后的prompt）
+                image_result = self._call_image_api(enhanced_prompt, model, size, task_id)
                 
-                # 保存图片到本地
-                task_dir = os.path.join(self.output_dir, task_id, 'frames')
-                os.makedirs(task_dir, exist_ok=True)
+                if image_result.get('success'):
+                    # 下载图片
+                    image_url = image_result['image_urls'][0]
+                    image_data = self._download_image(image_url)
+                    
+                    # 保存图片到本地
+                    task_dir = os.path.join(self.output_dir, task_id, 'frames')
+                    os.makedirs(task_dir, exist_ok=True)
+                    
+                    filename = f'shot_{shot_index}.png'
+                    file_path = os.path.join(task_dir, filename)
+                    
+                    with open(file_path, 'wb') as f:
+                        f.write(image_data)
+                    
+                    # 更新记录
+                    task_image.file_path = file_path
+                    task_image.status = 'completed'
+                    db.session.commit()
+                    
+                    logger.info(f"分镜图生成成功：{file_path}")
+                    return task_image
+                else:
+                    last_error = image_result.get('error')
+                    logger.warning(f"第 {attempt + 1}/{MAX_RETRIES} 次尝试失败：{last_error}")
+                    
+                    # 如果还有重试机会，等待后重试
+                    if attempt < MAX_RETRIES - 1:
+                        logger.info(f"等待 {RETRY_DELAY} 秒后重试...")
+                        time.sleep(RETRY_DELAY)
+                        
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"第 {attempt + 1}/{MAX_RETRIES} 次尝试异常：{last_error}")
                 
-                filename = f'shot_{shot_index}.png'
-                file_path = os.path.join(task_dir, filename)
-                
-                with open(file_path, 'wb') as f:
-                    f.write(image_data)
-                
-                # 更新记录
-                task_image.file_path = file_path
-                task_image.status = 'completed'
-                db.session.commit()
-                
-                logger.info(f"分镜图生成成功：{file_path}")
-                return task_image
-            else:
-                logger.error(f"AI 绘图 API 调用失败：{image_result.get('error')}")
-                task_image.status = 'failed'
-                task_image.error_message = image_result.get('error')
-                db.session.commit()
-                raise Exception(f"AI 绘图服务调用失败：{image_result.get('error')}")
-                
-        except Exception as e:
-            logger.error(f"分镜图生成异常：{str(e)}")
-            task_image.status = 'failed'
-            db.session.commit()
-            raise
+                # 如果还有重试机会，等待后重试
+                if attempt < MAX_RETRIES - 1:
+                    logger.info(f"等待 {RETRY_DELAY} 秒后重试...")
+                    time.sleep(RETRY_DELAY)
+        
+        # 所有重试都失败
+        logger.error(f"AI 绘图 API 调用失败，已重试 {MAX_RETRIES} 次")
+        task_image.status = 'failed'
+        task_image.error_message = f"重试 {MAX_RETRIES} 次后失败：{last_error}"
+        db.session.commit()
+        raise Exception(f"AI 绘图服务调用失败：{last_error}")
     
     def _call_image_api(self, prompt: str, model: str = "qwen-image-2.0-pro",
                         size: str = "1024*1024", task_id: str = None) -> dict:

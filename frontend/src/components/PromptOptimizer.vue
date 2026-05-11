@@ -20,9 +20,10 @@
           <el-input
             v-model="originalPrompt"
             type="textarea"
-            :rows="3"
-            placeholder="输入简单的提示词，例如：大唐芙蓉园夜景"
-            :disabled="optimizing"
+            :rows="2"
+            placeholder="随主题自动同步"
+            disabled
+            readonly
           />
         </el-form-item>
         
@@ -32,7 +33,6 @@
             type="textarea"
             :rows="5"
             placeholder="点击优化按钮，AI 将自动生成详细提示词"
-            readonly
           />
         </el-form-item>
         
@@ -65,6 +65,8 @@ const props = defineProps<{
   optimizedPrompt?: string
   sceneType?: string
   taskId?: string
+  keywords?: string
+  videoType?: string
 }>()
 
 const emit = defineEmits<{
@@ -79,6 +81,7 @@ const optimizationError = ref('')
 
 const handleOptimize = async () => {
   if (!originalPrompt.value.trim()) {
+
     optimizationError.value = '请输入原始提示词'
     return
   }
@@ -90,7 +93,9 @@ const handleOptimize = async () => {
     const response = await axios.post('/api/v1/prompts/optimize', {
       prompt: originalPrompt.value,
       scene_type: props.sceneType || undefined,
-      task_id: props.taskId || undefined
+      task_id: props.taskId || undefined,
+      keywords: props.keywords || undefined,
+      video_type: props.videoType || undefined
     })
     
     const result = response.data

@@ -13,7 +13,9 @@ def optimize_prompt():
         prompt = data.get('prompt', '')
         scene_type = data.get('scene_type')
         model = data.get('model', 'qwen3.5-plus')
-        task_id = data.get('task_id')  # 获取task_id
+        task_id = data.get('task_id')
+        keywords = data.get('keywords')
+        video_type = data.get('video_type')
         
         if not prompt:
             return jsonify({'error': '提示词不能为空'}), 400
@@ -22,8 +24,8 @@ def optimize_prompt():
         api_key = current_app.config['ALIYUN_BAILIAN_API_KEY']
         optimizer = PromptOptimizer(api_key)
         
-        # 优化提示词（传递task_id）
-        result = optimizer.optimize_prompt(prompt, scene_type, model, task_id)
+        # 优化提示词
+        result = optimizer.optimize_prompt(prompt, scene_type, model, task_id, keywords, video_type)
         
         return jsonify(result)
         
@@ -59,6 +61,9 @@ def generate_shot_prompt():
         shot_description = data.get('shot_description', '')
         scene_type = data.get('scene_type')
         camera_motion = data.get('camera_motion')
+        theme = data.get('theme')  # 新增
+        video_type = data.get('video_type')  # 新增
+        style = data.get('style')  # 新增
         
         if not shot_description:
             return jsonify({'error': '分镜描述不能为空'}), 400
@@ -67,8 +72,15 @@ def generate_shot_prompt():
         api_key = current_app.config['ALIYUN_BAILIAN_API_KEY']
         optimizer = PromptOptimizer(api_key)
         
-        # 生成提示词
-        result = optimizer.generate_shot_prompt(shot_description, scene_type, camera_motion)
+        # 生成提示词（传递上下文信息）
+        result = optimizer.generate_shot_prompt(
+            shot_description, 
+            scene_type, 
+            camera_motion,
+            theme=theme,
+            video_type=video_type,
+            style=style
+        )
         
         return jsonify(result)
         

@@ -17,8 +17,7 @@
           </el-select>
         </el-form-item>
         
-        <!-- 场景选择器 -->
-        <SceneSelector v-model="form.scene_type" @change="handleSceneChange" />
+        <!-- 场景选择器 (暂时禁用) -->
         
         <el-form-item label="主题" required>
           <el-input 
@@ -42,9 +41,12 @@
         
         <!-- 提示词优化 -->
         <PromptOptimizer 
-          v-model:original-prompt="form.theme"
+          :original-prompt="form.theme"
           v-model:optimized-prompt="form.optimized_theme"
           :scene-type="form.scene_type"
+          :task-id="tempTaskId"
+          :keywords="form.keywords"
+          :video-type="form.video_type"
         />
         
         <el-form-item style="margin-top: 20px">
@@ -67,13 +69,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
 import { useUIStore } from '@/stores/ui'
 import ScriptPreview from '@/components/ScriptPreview.vue'
-import SceneSelector from '@/components/SceneSelector.vue'
 import PromptOptimizer from '@/components/PromptOptimizer.vue'
 
 const router = useRouter()
@@ -83,9 +84,13 @@ const uiStore = useUIStore()
 
 const generating = ref(false)
 
+// 临时 taskId（用于提示词优化的 token 统计，后续会更新为真实 task_id）
+const tempTaskId = ref(`task_${Date.now()}_00000000`)
+
 // 页面加载时清空当前剧本，避免显示历史剧本
 onMounted(() => {
   scriptStore.setCurrentScript(null)
+  tempTaskId.value = `task_${Date.now()}_00000000`
 })
 
 const form = reactive({
@@ -97,13 +102,10 @@ const form = reactive({
   num_shots: 5
 })
 
-// 监听场景变化，自动更新推荐参数
-const handleSceneChange = (sceneType: string | null) => {
-  if (sceneType) {
-    // 场景选择后，可以自动设置推荐的分镜数量等
-    uiStore.showSuccess(`已选择场景：${sceneType}`)
-  }
-}
+// 监听主题变化，自动清空优化结果
+watch(() => form.theme, () => {
+  form.optimized_theme = ''
+})
 
 const handleGenerate = async () => {
   if (!form.theme) {
@@ -120,7 +122,8 @@ const handleGenerate = async () => {
     
     const result = await scriptStore.createScript({
       video_type: form.video_type,
-      theme: themeToUse,
+      theme: themeToUse,  // 优化后的主题
+      original_theme: form.theme,  // 原始主题
       keywords: form.keywords,
       num_shots: form.num_shots,
       scene_type: form.scene_type || undefined

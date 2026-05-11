@@ -10,6 +10,7 @@ class Script(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     theme = db.Column(db.String(500), nullable=False)
+    original_theme = db.Column(db.String(500))  # 用户原始输入的主题（未优化）
     video_type = db.Column(db.String(50), nullable=False)
     keywords = db.Column(db.Text)
     overview = db.Column(db.Text)
@@ -29,6 +30,7 @@ class Script(db.Model):
             'id': self.id,
             'title': self.title,
             'theme': self.theme,
+            'original_theme': self.original_theme,  # 原始主题
             'video_type': self.video_type,
             'keywords': self.keywords,
             'overview': self.overview,

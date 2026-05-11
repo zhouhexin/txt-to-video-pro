@@ -14,25 +14,29 @@ def generate_script():
         data = request.get_json()
         
         video_type = data.get('video_type', '文旅宣传')
-        theme = data.get('theme', '')
+        theme = data.get('theme', '')  # 优化后的主题
+        original_theme = data.get('original_theme', theme)  # 原始主题
         keywords = data.get('keywords', '')
         num_shots = data.get('num_shots', 5)
-        scene_type = data.get('scene_type')  # 新增：场景类型
+        scene_type = data.get('scene_type')
         
         if not theme:
             return jsonify({'error': '主题不能为空'}), 400
+        
+        # 先创建 task_id（用于 token 统计）
+        temp_task_id = f"task_{int(datetime.now().timestamp())}_00000000"
         
         # 初始化服务
         api_key = current_app.config['ALIYUN_BAILIAN_API_KEY']
         script_service = ScriptService(api_key)
         
-        # 生成剧本（带场景类型）
-        script_data = script_service.generate_script(video_type, theme, keywords, num_shots, scene_type)
+        # 生成剧本（带 task_id 用于统计）
+        script_data = script_service.generate_script(video_type, theme, keywords, num_shots, scene_type, task_id=temp_task_id)
         
-        # 保存到数据库
-        script = script_service.save_script(video_type, theme, keywords, script_data)
+        # 保存到数据库（保存原始主题）
+        script = script_service.save_script(video_type, original_theme, keywords, script_data)
         
-        # 创建任务
+        # 创建任务（使用正确的 task_id 包含 script.id）
         task_id = f"task_{int(datetime.now().timestamp())}_{script.id:08d}"
         task = Task(
             id=task_id,
@@ -43,6 +47,11 @@ def generate_script():
         )
         db.session.add(task)
         script.task_id = task_id
+        db.session.commit()
+        
+        # 更新 token_usage 表中的 task_id
+        from app.models import TokenUsage
+        TokenUsage.query.filter(TokenUsage.task_id == temp_task_id).update({'task_id': task_id})
         db.session.commit()
         
         return jsonify({

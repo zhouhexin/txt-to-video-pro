@@ -60,7 +60,8 @@ class TaskImage(db.Model):
     shot_index = db.Column(db.Integer, nullable=False)
     file_path = db.Column(db.String(500))
     status = db.Column(db.String(20), default='pending')  # pending, completed, failed
-    prompt = db.Column(db.Text)
+    prompt = db.Column(db.Text)  # 最终使用的英文提示词
+    original_shot_description = db.Column(db.Text)  # 用户原始输入的中文分镜描述
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):

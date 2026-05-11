@@ -18,6 +18,42 @@ export interface TokenUsage {
   created_at: string
 }
 
+export interface TaskStage {
+  tokens: number
+  calls: number
+}
+
+export interface TaskStats {
+  task_id: string
+  title: string
+  total_input: number
+  total_output: number
+  total_tokens: number
+  call_count: number
+  created_at: string | null
+  stages: Record<string, TaskStage>
+}
+
+export interface TaskDetail {
+  task_id: string
+  title: string
+  theme: string | null
+  video_type: string | null
+  total_input: number
+  total_output: number
+  total_tokens: number
+  call_count: number
+  created_at: string | null
+  stages: Array<{
+    stage: string
+    model_type: string
+    input_tokens: number
+    output_tokens: number
+    total_tokens: number
+    call_count: number
+  }>
+}
+
 export interface TokenStatistics {
   total_input_tokens: number
   total_output_tokens: number
@@ -41,7 +77,7 @@ export interface DailyStats {
 }
 
 // 获取 Token 使用统计概览
-export const getTokenOverview = async (): Promise<TokenStatistics> => {
+export const getTokenOverview = async (): Promise<any> => {
   const response = await api.get('/tokens/overview')
   return response.data
 }
@@ -54,16 +90,21 @@ export const getDailyStats = async (days?: number): Promise<{ stats: DailyStats[
 }
 
 // 获取按模型统计
-export const getByModelStats = async (): Promise<Array<{
-  model_type: string
-  model_name: string
-  total_input: number
-  total_output: number
-  total_tokens: number
-  call_count: number
-}>> => {
+export const getByModelStats = async (): Promise<Array<any>> => {
   const response = await api.get('/tokens/by-model')
   return response.data.stats
+}
+
+// 获取按项目统计（新增）
+export const getByTaskStats = async (): Promise<TaskStats[]> => {
+  const response = await api.get('/tokens/by-task')
+  return response.data.tasks
+}
+
+// 获取单个项目详情（新增）
+export const getTaskDetail = async (taskId: string): Promise<TaskDetail | null> => {
+  const response = await api.get(`/tokens/task/${taskId}`)
+  return response.data
 }
 
 // 获取 Token 使用记录列表
@@ -80,7 +121,6 @@ export const getTokenUsageList = async (params?: {
   if (params?.task_id) searchParams.append('task_id', params.task_id)
   if (params?.start_date) searchParams.append('start_date', params.start_date)
   if (params?.end_date) searchParams.append('end_date', params.end_date)
-  // 确保page和per_page总是被添加，使用默认值
   searchParams.append('page', (params?.page ?? 1).toString())
   searchParams.append('per_page', (params?.per_page ?? 20).toString())
   
@@ -95,21 +135,16 @@ export const getTokenRecordDetail = async (recordId: number): Promise<TokenUsage
 }
 
 // 综合获取统计数据（用于 TokenStatistics 页面）
-export const getTokenStatistics = async (startDate?: string, endDate?: string): Promise<TokenStatistics> => {
-  // 获取概览数据
+export const getTokenStatistics = async (startDate?: string, endDate?: string): Promise<any> => {
   const overview = await getTokenOverview()
-  
-  // 获取每日统计（默认7天）
   const dailyResult = await getDailyStats(7)
-  
-  // 获取按模型统计
   const modelStats = await getByModelStats()
+  const taskStats = await getByTaskStats()
   
-  // 转换按模型统计数据格式
-  const byModelType: Record<string, { input: number; output: number; calls: number; total: number }> = {}
-  const byModelName: Record<string, { input: number; output: number; calls: number; total: number }> = {}
+  const byModelType: Record<string, any> = {}
+  const byModelName: Record<string, any> = {}
   
-  modelStats.forEach(stat => {
+  modelStats.forEach((stat: any) => {
     if (stat.model_type) {
       if (!byModelType[stat.model_type]) {
         byModelType[stat.model_type] = { input: 0, output: 0, calls: 0, total: 0 }
@@ -135,6 +170,7 @@ export const getTokenStatistics = async (startDate?: string, endDate?: string): 
     ...overview,
     by_model_type: byModelType,
     by_model_name: byModelName,
-    daily_stats: dailyResult.stats
+    daily_stats: dailyResult.stats,
+    tasks: taskStats
   }
 }

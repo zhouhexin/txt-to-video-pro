@@ -3,5 +3,6 @@ from .image_service import ImageService
 from .video_service import VideoService
 from .prompt_optimizer import PromptOptimizer
 from .statistics_service import StatisticsService
+from .conversation_manager import ConversationManager, conversation_manager
 
-__all__ = ['ScriptService', 'ImageService', 'VideoService', 'PromptOptimizer', 'StatisticsService']
+__all__ = ['ScriptService', 'ImageService', 'VideoService', 'PromptOptimizer', 'StatisticsService', 'ConversationManager', 'conversation_manager']

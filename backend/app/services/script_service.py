@@ -5,8 +5,8 @@ from app import db
 from app.models import Script, Task
 from .prompt_optimizer import PromptOptimizer
 from .token_service import TokenService
-import dashscope
-from dashscope import Generation
+from .conversation_manager import conversation_manager
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,11 @@ class ScriptService:
     """剧本生成服务"""
     
     def __init__(self, api_key: str):
-        dashscope.api_key = api_key
+        self.api_key = api_key
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        )
         self.prompt_optimizer = PromptOptimizer(api_key)
     
     def generate_script(self, video_type: str, theme: str, keywords: str = "", 
@@ -33,88 +37,109 @@ class ScriptService:
         Returns:
             生成的剧本字典
         """
-        prompt = self._build_prompt(video_type, theme, keywords, num_shots)
+        system_prompt = self._build_system_prompt(video_type, num_shots)
+        user_prompt = self._build_user_prompt(theme, keywords, scene_type)
         
         try:
-            response = Generation.call(
-                model='qwen-max',
-                prompt=prompt,
-                result_format='message'
-            )
-            
-            if response.status_code == 200:
-                content = response.output.choices[0].message.content
+            # 使用会话管理器优化token
+            if task_id:
+                # 检查会话是否存在
+                session_exists = conversation_manager.get_session_size(task_id) > 0
                 
-                # 记录 token 使用情况
-                try:
-                    usage = response.usage
-                    input_tokens = usage.input_tokens if hasattr(usage, 'input_tokens') else 0
-                    output_tokens = usage.output_tokens if hasattr(usage, 'output_tokens') else 0
-                    
-                    TokenService.record_usage(
-                        model_type='script_generate',
-                        input_tokens=input_tokens,
-                        output_tokens=output_tokens,
-                        model_name='qwen-max',
-                        task_id=task_id,
-                        prompt_text=prompt,
-                        response_text=content,
-                        scene='script_creation'
-                    )
-                except Exception as token_error:
-                    logger.warning(f"Token 记录失败：{token_error}")
+                # 首次调用：设置系统提示词
+                if not conversation_manager.get_system_prompt(task_id):
+                    conversation_manager.set_system_prompt(task_id, system_prompt)
                 
-                script_data = self._parse_script_response(content, video_type, theme, keywords)
-                return script_data
+                # 如果会话存在，添加之前的用户消息作为上下文
+                if session_exists:
+                    # 获取之前的用户消息（主题）
+                    previous_messages = conversation_manager.get_user_messages(task_id)
+                    themes = [m.get('content', '').split('主题：')[1].split('\n')[0] for m in previous_messages if '主题：' in m.get('content', '')]
+                    if themes:
+                        user_prompt = f"【历史主题】{', '.join(themes)}\n\n" + user_prompt
+                    logger.info(f"会话 {task_id} 存在，包含 {len(previous_messages)} 条历史消息")
+                
+                # 添加当前用户消息
+                conversation_manager.add_message(task_id, "user", user_prompt)
+                messages = conversation_manager.get_messages(task_id)
             else:
-                logger.error(f"AI API 调用失败：{response.code} - {response.message}")
-                raise Exception(f"AI 服务调用失败：{response.message}")
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            
+            import time
+            start_time = time.time()
+            response = self.client.chat.completions.create(
+                model='qwen-max',
+                messages=messages
+            )
+            duration = time.time() - start_time
+            logger.info(f"剧本生成API调用耗时: {duration:.2f}秒")
+            
+            content = response.choices[0].message.content
+            logger.info(f"剧本生成成功，内容长度: {len(content)}")
+            
+            # 记录会话
+            if task_id:
+                conversation_manager.add_message(task_id, "assistant", content)
+                logger.info(f"会话 {task_id} 已保存")
+            
+            # 记录 token 使用情况
+            try:
+                usage = response.usage
+                input_tokens = usage.prompt_tokens if usage else 0
+                output_tokens = usage.completion_tokens if usage else 0
                 
+                TokenService.record_usage(
+                    model_type='script_generate',
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    model_name='qwen-max',
+                    task_id=task_id,
+                    prompt_text=user_prompt,
+                    response_text=content,
+                    scene='script_creation'
+                )
+            except Exception as token_error:
+                logger.warning(f"Token 记录失败：{token_error}")
+            
+            script_data = self._parse_script_response(content, video_type, theme, keywords)
+            return script_data
+            
         except Exception as e:
             logger.error(f"剧本生成异常：{str(e)}")
             raise
     
-    def _build_prompt(self, video_type: str, theme: str, keywords: str, num_shots: int, 
-                     scene_type: str = None) -> str:
-        """构建 AI 提示词"""
-        # 如果有场景类型，添加场景风格描述
+    def _build_system_prompt(self, video_type: str, num_shots: int) -> str:
+        """构建系统提示词"""
+        return f"""你是专业影视分镜编剧与AI视频剧本创作专家。
+按以下要求创作{video_type}剧本：
+
+格式要求：
+1. 严格按指定 JSON 输出（仅 JSON，无其他文字）
+2. 包含 title、overview（≤200字）、style、shots（含 scene/visual/camera/duration/prompt）
+3. {num_shots}个镜头，每个镜头 5 秒
+4. 运镜从 push/pull/pan/tilt/zoom/orbit 选
+5. 每个镜头配详细英文 AI 绘图提示词（prompt）
+6. 除prompt外，所有字段中文"""
+    
+    def _build_user_prompt(self, theme: str, keywords: str, scene_type: str = None) -> str:
+        """构建用户提示词"""
         style_note = ""
         if scene_type and scene_type in self.prompt_optimizer.scene_styles:
             style_info = self.prompt_optimizer.scene_styles[scene_type]
             style_note = f"""
-
 场景风格参考：
 - 场景特点：{style_info['style']}
 - 氛围：{style_info['atmosphere']}
 - 推荐运镜：{style_info['camera_motion']}"""
         
-        return f"""专业视频剧本创作专家，按以下要求创作完整{video_type}剧本：
+        return f"""创作剧本：
 主题：{theme}
-关键词：{keywords}
-分镜数量：{num_shots} 个镜头{style_note}
+关键词：{keywords}{style_note}
 
-格式：严格按指定 JSON 输出（仅 JSON，无其他文字），包含 title、overview（≤200 字）、style、shots（含 scene/visual/camera/duration/prompt）
-要求：{num_shots}个镜头，每个镜头 3-8 秒，
-运镜从 push/pull/pan/tilt/zoom/orbit 选，画面描述具体适配 AI 视频生成，
-每个镜头配详细英文 AI 绘图提示词（prompt），整体风格统一，符合{video_type}特点
-除prompt外，所有字段中文
-"""
-
-    # 请按照以下 JSON 格式输出剧本（只输出 JSON，不要其他文字）：
-    # {{
-    #     "title": "剧本标题",
-    #     "overview": "200 字以内的视频概述",
-    #     "style": "视频风格描述",
-    #     "shots": [
-    #         {{
-    #             "scene": "镜头 1: 场景名称",
-    #             "visual": "详细的画面描述，包括场景、人物、动作、道具等",
-    #             "camera": "运镜方式（push/pull/pan/tilt/zoom/orbit）",
-    #             "duration": 5,
-    #             "prompt": "用于 AI 绘图的英文 prompt，详细描述画面内容、风格、光影、构图等"
-    #         }}
-    #     ]
-    # }}
+画面描述具体适配 AI 视频生成，整体风格统一。"""
     def _parse_script_response(self, content: str, video_type: str, theme: str, keywords: str) -> dict:
         """解析 AI 返回的剧本"""
         try:
@@ -143,11 +168,17 @@ class ScriptService:
                 'shots': []
             }
     
-    def save_script(self, video_type: str, theme: str, keywords: str, script_data: dict) -> Script:
-        """保存剧本到数据库"""
+    def save_script(self, video_type: str, theme: str, keywords: str, script_data: dict, original_theme: str = None) -> Script:
+        """保存剧本到数据库
+        
+        Args:
+            theme: 优化后的主题（存入 theme 字段）
+            original_theme: 原始主题（存入 original_theme 字段）
+        """
         script = Script(
             title=script_data['title'],
-            theme=theme,
+            theme=theme,  # 优化后的主题
+            original_theme=original_theme or theme,  # 原始主题
             video_type=video_type,
             keywords=keywords,
             overview=script_data.get('overview', ''),

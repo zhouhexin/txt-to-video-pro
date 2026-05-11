@@ -15,7 +15,7 @@ class TokenUsage(db.Model):
     output_tokens = db.Column(db.Integer, default=0)
     total_tokens = db.Column(db.Integer, default=0)
     is_estimated = db.Column(db.Boolean, default=False)  # 是否为估算值（API未返回精确token信息时为True）
-    prompt_text = db.Column(db.Text)  # 发送的提示词
+    prompt_text = db.Column(db.Text)  # 发送给API的完整提示词（包含系统提示词等）
     response_text = db.Column(db.Text)  # 返回的信息
     scene = db.Column(db.String(50))  # 调用场景：script_creation, image_prompt, video_prompt, optimization
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

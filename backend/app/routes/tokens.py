@@ -38,6 +38,30 @@ def get_by_model_stats():
         return jsonify({'error': str(e)}), 500
 
 
+@tokens_bp.route('/tokens/by-task', methods=['GET'])
+def get_by_task_stats():
+    """按项目（task_id）获取统计"""
+    try:
+        service = TokenService()
+        stats = service.get_by_task_stats()
+        return jsonify({'tasks': stats})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tokens_bp.route('/tokens/task/<task_id>', methods=['GET'])
+def get_task_detail(task_id):
+    """获取单个项目的详细统计"""
+    try:
+        service = TokenService()
+        detail = service.get_task_detail(task_id)
+        if detail:
+            return jsonify(detail)
+        return jsonify({'error': 'Task not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @tokens_bp.route('/tokens/records', methods=['GET'])
 def get_records():
     """获取 Token 使用记录列表"""
@@ -48,7 +72,7 @@ def get_records():
         task_id = request.args.get('task_id')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        
+
         service = TokenService()
         result = service.get_records(
             page=page,
