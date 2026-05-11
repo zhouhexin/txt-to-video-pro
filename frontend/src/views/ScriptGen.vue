@@ -24,7 +24,28 @@
             v-model="form.theme" 
             placeholder="例如：西安大唐芙蓉园、新款智能手机发布"
             :disabled="generating"
+            @blur="fetchHotKeywords"
           />
+        </el-form-item>
+        
+        <!-- 微博热点关键词推荐 -->
+        <el-form-item v-if="hotKeywords.length > 0" label="🔥 热点推荐">
+          <div class="hot-keywords-container">
+            <el-tag
+              v-for="kw in hotKeywords"
+              :key="kw.word"
+              size="large"
+              effect="plain"
+              class="hot-keyword-tag"
+              @click="addKeyword(kw.word)"
+            >
+              {{ kw.word }}
+              <span class="hot-score">{{ kw.hot_score }}</span>
+            </el-tag>
+            <el-button size="small" @click="refreshKeywords" style="margin-left: 8px">
+              🔄 刷新
+            </el-button>
+          </div>
         </el-form-item>
         
         <el-form-item label="关键词">
@@ -87,6 +108,9 @@ const generating = ref(false)
 // 临时 taskId（用于提示词优化的 token 统计，后续会更新为真实 task_id）
 const tempTaskId = ref(`task_${Date.now()}_00000000`)
 
+// 热点关键词
+const hotKeywords = ref<Array<{ word: string; hot_score: number }>>([])
+
 // 页面加载时清空当前剧本，避免显示历史剧本
 onMounted(() => {
   scriptStore.setCurrentScript(null)
@@ -106,6 +130,46 @@ const form = reactive({
 watch(() => form.theme, () => {
   form.optimized_theme = ''
 })
+
+// 获取热点关键词
+const fetchHotKeywords = async () => {
+  if (!form.theme || !form.video_type) return
+  
+  try {
+    const res = await fetch('/api/v1/weibo/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        video_type: form.video_type,
+        theme: form.theme
+      })
+    })
+    
+    const data = await res.json()
+    if (data.success) {
+      hotKeywords.value = data.keywords || []
+    }
+  } catch (error) {
+    console.error('获取热点关键词失败:', error)
+  }
+}
+
+// 添加关键词到输入框
+const addKeyword = (word: string) => {
+  if (form.keywords) {
+    if (!form.keywords.includes(word)) {
+      form.keywords += `, ${word}`
+    }
+  } else {
+    form.keywords = word
+  }
+}
+
+// 刷新关键词
+const refreshKeywords = () => {
+  hotKeywords.value = []
+  fetchHotKeywords()
+}
 
 const handleGenerate = async () => {
   if (!form.theme) {
@@ -170,5 +234,33 @@ h2 {
   margin: 0;
   font-size: 20px;
   color: #333;
+}
+
+.hot-keywords-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.hot-keyword-tag {
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  padding: 4px 12px;
+}
+
+.hot-keyword-tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+  border-color: #f56565;
+}
+
+.hot-score {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #f56565;
+  font-weight: bold;
 }
 </style>
