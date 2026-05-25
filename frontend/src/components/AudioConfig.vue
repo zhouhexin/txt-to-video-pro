@@ -8,8 +8,6 @@
     
     <el-form :model="config" label-width="120px" size="default">
       <!-- BGM 设置 -->
-      
-      <!-- BGM 设置 -->
       <el-form-item label="启用 BGM">
         <el-switch v-model="config.enableBGM" />
       </el-form-item>
@@ -47,10 +45,10 @@
         
         <el-form-item label="试听 BGM">
           <el-button 
-            @click="handlePreviewBGM" 
-            :loading="playingBGM"
+            @click="handlePreviewBGM"
+            :disabled="!config.bgmId && !playingBGM"
           >
-            {{ playingBGM ? '停止播放' : '🔊 试听' }}
+            {{ playingBGM ? '⏹️ 停止播放' : '🔊 试听' }}
           </el-button>
           <span v-if="playingBGM" style="margin-left: 10px; color: #67c23a">
             播放中...
@@ -271,18 +269,16 @@ const handlePreviewBGM = () => {
     return
   }
   
-  // 如果正在播放（任何音频），先停止
-  if (playingBGM.value || playingVoice.value) {
+  // 如果正在播放，先停止
+  if (playingBGM.value) {
     console.log('停止当前播放')
     stopCurrentAudio()
-    // 等待状态更新
-    setTimeout(() => {
-      // 如果点击的是停止，且当前没有播放其他音频，则直接返回
-      if (!playingBGM.value) {
-        console.log('已停止播放')
-      }
-    }, 100)
     return
+  }
+  
+  // 停止其他可能正在播放的音频
+  if (currentAudio.value) {
+    stopCurrentAudio()
   }
   
   const bgm = bgmList.value.find(b => b.id === config.bgmId)

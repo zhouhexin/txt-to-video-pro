@@ -37,7 +37,7 @@ class ScriptService:
         Returns:
             生成的剧本字典
         """
-        system_prompt = self._build_system_prompt(video_type, num_shots)
+        system_prompt = self._build_system_prompt(video_type, num_shots,theme)
         user_prompt = self._build_user_prompt(theme, keywords, scene_type)
         
         try:
@@ -111,18 +111,17 @@ class ScriptService:
             logger.error(f"剧本生成异常：{str(e)}")
             raise
     
-    def _build_system_prompt(self, video_type: str, num_shots: int) -> str:
+    def _build_system_prompt(self, video_type: str, num_shots: int,theme: str) -> str:
         """构建系统提示词"""
-        return f"""你是专业影视分镜编剧与AI视频剧本创作专家。
-按以下要求创作{video_type}剧本：
-
-格式要求：
-1. 严格按指定 JSON 输出（仅 JSON，无其他文字）
-2. 包含 title、overview（≤200字）、style、shots（含 scene/visual/camera/duration/prompt）
-3. {num_shots}个镜头，每个镜头 5 秒
-4. 运镜从 push/pull/pan/tilt/zoom/orbit 选
-5. 每个镜头配详细英文 AI 绘图提示词（prompt）
-6. 除prompt外，所有字段中文"""
+        return f"""你是专业影视分镜编剧与AI视频剧本创作专家。按以下要求创作{video_type}剧本：
+剧本主题：{theme}
+严格按指定JSON格式输出（仅JSON，无其他文字）：
+{{"title": "全局标题", "shots": [{{"visual": "画面内容", "镜头类型": "类型", "运镜/动效": "运镜", "光影": "光影", "prompt": "英文prompt"}}]}}
+要求：
+1. visual（画面内容）详细，所有分镜画面类型统一，剧情连贯
+2. {num_shots}个镜头，每个镜头5秒
+3. 每个镜头配详细英文AI绘图prompt
+4. 每个分镜的visual不超过150字"""
     
     def _build_user_prompt(self, theme: str, keywords: str, scene_type: str = None) -> str:
         """构建用户提示词"""
@@ -140,23 +139,51 @@ class ScriptService:
 关键词：{keywords}{style_note}
 
 画面描述具体适配 AI 视频生成，整体风格统一。"""
+    
     def _parse_script_response(self, content: str, video_type: str, theme: str, keywords: str) -> dict:
         """解析 AI 返回的剧本"""
         try:
             # 尝试提取 JSON 内容
             start_idx = content.find('{')
             end_idx = content.rfind('}') + 1
+            
+            # 如果没有找到 {，尝试查找 [
+            if start_idx < 0:
+                start_idx = content.find('[')
+                end_idx = content.rfind(']') + 1
+            
             if start_idx >= 0 and end_idx > start_idx:
                 json_str = content[start_idx:end_idx]
                 script_data = json.loads(json_str)
             else:
                 script_data = json.loads(content)
-            
+
+            # 检查是否直接返回的是数组（分镜数组）
+            if isinstance(script_data, list):
+                # AI 直接返回了分镜数组
+                shots = script_data
+                title = f'{theme} - {video_type}'
+                # 尝试从 content 中提取标题
+                if '"title"' in content:
+                    try:
+                        parts = content.split('"title"')
+                        if len(parts) > 1:
+                            title_part = parts[1].split('"')[1] if '"' in parts[1] else title
+                            if title_part and len(title_part) < 100:
+                                title = title_part
+                    except:
+                        pass
+                overview = ''
+            else:
+                shots = script_data.get('shots', [])
+                title = script_data.get('title', f'{theme} - {video_type}')
+                overview = script_data.get('overview', '')
+
             return {
-                'title': script_data.get('title', f'{theme} - {video_type}'),
-                'overview': script_data.get('overview', ''),
-                'style': script_data.get('style', ''),
-                'shots': script_data.get('shots', [])
+                'title': title,
+                'overview': overview,
+                'style': script_data.get('style', '') if isinstance(script_data, dict) else '',
+                'shots': shots
             }
         except json.JSONDecodeError as e:
             logger.error(f"JSON 解析失败：{str(e)}")

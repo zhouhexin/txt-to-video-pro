@@ -163,6 +163,8 @@ const addKeyword = (word: string) => {
   } else {
     form.keywords = word
   }
+  // 移除已选择的热点标签
+  hotKeywords.value = hotKeywords.value.filter(kw => kw.word !== word)
 }
 
 // 刷新关键词

@@ -2,38 +2,22 @@
   <el-card class="script-preview" shadow="hover">
     <template #header>
       <div class="card-header">
-        <h3>{{ script.title }}</h3>
-        <el-tag type="success">{{ script.video_type }}</el-tag>
+        <h3 class="title">{{ truncateTitle(script.title) }}</h3>
+        <div class="meta">
+          <el-tag type="success" size="small">{{ script.video_type }}</el-tag>
+          <span class="shot-count">{{ script.shots?.length || 0 }}个镜头</span>
+        </div>
       </div>
     </template>
     
-    <el-descriptions :column="2" border size="small">
-      <el-descriptions-item label="原始提示词">{{ script.original_theme || '无' }}</el-descriptions-item>
-      <el-descriptions-item label="优化后">{{ script.theme }}</el-descriptions-item>
-      <el-descriptions-item label="分镜数">{{ script.shots?.length || 0 }}个</el-descriptions-item>
-      <el-descriptions-item label="关键词">{{ script.keywords || '无' }}</el-descriptions-item>
-      <el-descriptions-item label="风格" :span="2">{{ script.style || '未指定' }}</el-descriptions-item>
-    </el-descriptions>
-    
-    <el-divider>剧本概览</el-divider>
-    
-    <div class="overview">{{ script.overview }}</div>
-    
-    <el-divider>分镜详情</el-divider>
-    
     <div class="shots">
       <div v-for="(shot, i) in script.shots" :key="i" class="shot-item">
-        <div class="shot-header">
-          <span class="shot-title">镜头 {{ i + 1 }}: {{ shot.scene }}</span>
-          <div class="shot-tags">
-            <el-tag size="small" type="info">{{ shot.camera }}</el-tag>
-            <el-tag size="small">{{ shot.duration }}秒</el-tag>
+        <div class="shot-number">{{ i + 1 }}</div>
+        <div class="shot-content">
+          <div class="shot-visual">{{ shot.visual || shot.content }}</div>
+          <div class="shot-meta">
+            <span class="shot-type">{{ shot['镜头类型'] || shot.camera || '镜头' }}</span>
           </div>
-        </div>
-        <div class="shot-visual">{{ shot.visual }}</div>
-        <div class="shot-prompt">
-          <span class="prompt-label">Prompt</span>
-          <pre>{{ shot.prompt }}</pre>
         </div>
       </div>
     </div>
@@ -46,6 +30,11 @@ import type { Script } from '@/types'
 defineProps<{
   script: Script
 }>()
+
+function truncateTitle(title: string, maxLen = 50) {
+  if (!title) return ''
+  return title.length > maxLen ? title.slice(0, maxLen) + '...' : title
+}
 </script>
 
 <style scoped>
@@ -55,90 +44,83 @@ defineProps<{
 
 .card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.card-header h3 {
+.title {
   margin: 0;
   font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
-.overview {
-  color: #606266;
-  line-height: 1.8;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  font-size: 14px;
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shot-count {
+  font-size: 13px;
+  color: #909399;
 }
 
 .shots {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .shot-item {
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
+  display: flex;
+  gap: 16px;
   padding: 16px;
-  background: #fff;
+  background: #fafafa;
+  border-radius: 12px;
+  transition: background 0.2s;
 }
 
 .shot-item:hover {
-  border-color: #409eff;
+  background: #f0f0f0;
 }
 
-.shot-header {
+.shot-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-}
-
-.shot-title {
+  justify-content: center;
+  background: #409eff;
+  color: #fff;
+  border-radius: 50%;
   font-weight: 600;
-  color: #303133;
+  font-size: 14px;
 }
 
-.shot-tags {
+.shot-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.shot-visual {
+  color: #333;
+  line-height: 1.7;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.shot-meta {
   display: flex;
   gap: 8px;
 }
 
-.shot-visual {
-  color: #606266;
-  line-height: 1.7;
-  padding: 12px;
-  background: linear-gradient(135deg, #f0f9eb 0%, #e8f5e0 100%);
-  border-radius: 4px;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.shot-prompt {
-  margin-top: 8px;
-}
-
-.prompt-label {
-  display: block;
+.shot-type {
   font-size: 12px;
   color: #909399;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
-
-pre {
-  margin: 0;
-  padding: 12px;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  padding: 2px 8px;
+  background: #e8e8e8;
   border-radius: 4px;
-  font-size: 12px;
-  line-height: 1.6;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
 }
 </style>

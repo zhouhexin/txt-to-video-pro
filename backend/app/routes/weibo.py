@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 weibo_bp = Blueprint('weibo', __name__)
 
 # 推荐器实例（单例）
-recommender = WeiboKeywordRecommender(api_url='http://localhost:8080')
+recommender = WeiboKeywordRecommender()
 
 
 @weibo_bp.route('/api/v1/weibo/recommend', methods=['POST'])
@@ -35,10 +35,6 @@ def recommend_keywords():
         "keywords": [
             {"word": "打卡", "hot_score": 95},
             {"word": "攻略", "hot_score": 90}
-        ],
-        "hot_topics": [
-            "华山旅游攻略",
-            "华山必去景点"
         ],
         "source": "social_hotspot_monitor"  # 或 "fallback"
     }
@@ -65,7 +61,6 @@ def recommend_keywords():
         return jsonify({
             'success': True,
             'keywords': result['keywords'],
-            'hot_topics': result['hot_topics'],
             'theme': theme,
             'video_type': video_type,
             'source': 'social_hotspot_monitor' if not result.get('fallback') else 'fallback'
@@ -76,6 +71,5 @@ def recommend_keywords():
         return jsonify({
             'success': False,
             'message': f'推荐失败：{str(e)}',
-            'keywords': [],
-            'hot_topics': []
+            'keywords': []
         }), 500

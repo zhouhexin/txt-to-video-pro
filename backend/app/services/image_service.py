@@ -46,7 +46,7 @@ class ImageService:
             TaskImage 对象
         """
         # 注意：主题/视频类型/风格信息已在 generate_shot_prompt 中包含，这里直接使用
-        enhanced_prompt = self._enhance_prompt(prompt, theme, video_type, style)
+        enhanced_prompt = self._enhance_prompt(prompt, theme, video_type)
         # enhanced_prompt = prompt
         logger.info(f"分镜提示词: {enhanced_prompt[:100]}...")
         
@@ -295,7 +295,7 @@ class ImageService:
         
         return self.generate_image(task_id, shot_index, last_prompt)
     
-    def _enhance_prompt(self, prompt: str, theme: str = None, video_type: str = None, style: str = None) -> str:
+    def _enhance_prompt(self, prompt: str, theme: str = None, video_type: str = None) -> str:
         """
         增强绘图prompt，添加主题、视频类型、风格信息
         
@@ -348,21 +348,6 @@ class ImageService:
             }
             video_type_en = video_type_en_map.get(video_type, f'{video_type} style')
             enhancements.append(video_type_en)
-        
-        # 风格增强
-        if style:
-            style_en_map = {
-                '唯美风光': 'beautiful scenic style, soft lighting, elegant composition',
-                '动感活力': 'dynamic and energetic style, vibrant colors, motion blur',
-                '温馨治愈': 'warm and healing style, soft pastel colors, cozy atmosphere',
-                '科技未来': 'futuristic tech style, neon lights, cyber aesthetic',
-                '复古怀旧': 'retro vintage style, film grain, nostalgic colors',
-                '简约现代': 'minimalist modern style, clean lines, contemporary design',
-                '大气磅礴': 'grand and majestic style, epic scale, dramatic lighting',
-                '清新自然': 'fresh natural style, bright colors, organic elements',
-            }
-            style_en = style_en_map.get(style, f'{style} aesthetic')
-            enhancements.append(style_en)
         
         # 组合增强内容
         if enhancements:

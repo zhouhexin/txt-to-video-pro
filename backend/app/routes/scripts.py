@@ -34,7 +34,7 @@ def generate_script():
         script_data = script_service.generate_script(video_type, theme, keywords, num_shots, scene_type, task_id=temp_task_id)
         
         # 保存到数据库（保存原始主题）
-        script = script_service.save_script(video_type, original_theme, keywords, script_data)
+        script = script_service.save_script(video_type, theme, keywords, script_data, original_theme)
         
         # 创建任务（使用正确的 task_id 包含 script.id）
         task_id = f"task_{int(datetime.now().timestamp())}_{script.id:08d}"

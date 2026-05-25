@@ -17,7 +17,7 @@ def generate_image():
         prompt = data.get('prompt', '')
         theme = data.get('theme', '')  # 主题
         video_type = data.get('video_type', '')  # 视频类型
-        style = data.get('style', '')  # 风格
+        # style = data.get('style', '')  # 风格
         
         if not task_id or not prompt:
             return jsonify({'error': 'task_id 和 prompt 不能为空'}), 400

@@ -12,7 +12,10 @@ from typing import Dict, List
 class WeiboKeywordRecommender:
     """微博热点关键词推荐器"""
     
-    def __init__(self, api_url: str = 'http://localhost:5001'):
+    # 低权重词（通用词、泛义词）
+    LOW_WEIGHT_WORDS = {'打卡', '白天', '周末', '拍照', '推荐', '热门', '最美', '必去'}
+    
+    def __init__(self, api_url: str = 'http://212.64.14.158:5001'):
         self.api_url = api_url
         self.timeout = 5  # 5 秒超时
     
@@ -27,15 +30,14 @@ class WeiboKeywordRecommender:
         Returns:
             {
                 "keywords": [{"word": "夜爬", "hot_score": 95}, ...],
-                "hot_topics": ["热门话题 1", ...]
             }
         """
         try:
             # 调用 social-hotspot-monitor API
             response = requests.get(
-                f'{self.api_url}/api/v1/hotspot/topics/by-type',
+                f'{self.api_url}/api/v1/hotspot/search',
                 params={
-                    'video_type': video_type,
+                    'keyword': theme,
                     'limit': 10
                 },
                 timeout=self.timeout
@@ -45,18 +47,33 @@ class WeiboKeywordRecommender:
                 data = response.json()
                 if data.get('success'):
                     topics = data.get('data', {}).get('topics', [])
-                    # 转换为关键词格式
-                    keywords = self._format_topics(topics)
-                    hot_topics = self._generate_hot_topics(theme, video_type)
+                    keywords = []
+                    seen = set()  # 去重
                     
-                    return {
-                        'keywords': keywords,
-                        'hot_topics': hot_topics,
-                        'theme': theme,
-                        'video_type': video_type
-                    }
+                    for topic in topics:
+                        # keywords 是空格分隔的字符串："古风 唐代 夜景"
+                        topic_keywords = topic.get('keywords', '')
+                        for kw in topic_keywords.split(' '):
+                            kw = kw.strip()
+                            if not kw or kw in seen:
+                                continue
+                            
+                            seen.add(kw)
+                            # 低权重词降低分数
+                            score = 60 if kw in self.LOW_WEIGHT_WORDS else 90
+                            keywords.append({'word': kw, 'hot_score': score})
+                    
+                    # 按权重排序，最多7个
+                    keywords = sorted(keywords, key=lambda x: x['hot_score'], reverse=True)[:7]
+                    
+                    if keywords:
+                        return {
+                            'keywords': keywords,
+                            'theme': theme,
+                            'video_type': video_type
+                        }
             
-            # API 调用失败，返回预定义关键词
+            # API 调用失败或没有关键词，返回预定义关键词
             return self._fallback_recommend(theme, video_type)
         
         except requests.exceptions.RequestException as e:
@@ -64,30 +81,14 @@ class WeiboKeywordRecommender:
             # 降级方案：返回预定义关键词
             return self._fallback_recommend(theme, video_type)
     
-    def _format_topics(self, topics: List[str]) -> List[Dict]:
-        """格式化话题列表为关键词格式"""
-        return [
-            {'word': topic, 'hot_score': max(100 - i * 10, 50)}
-            for i, topic in enumerate(topics[:10])
-        ]
-    
-    def _generate_hot_topics(self, theme: str, video_type: str) -> List[str]:
-        """生成热门话题"""
-        return [
-            f'{theme}旅游攻略',
-            f'{theme}必去景点',
-            '周末去哪儿玩'
-        ]
-    
     def _fallback_recommend(self, theme: str, video_type: str) -> Dict:
         """降级方案：预定义关键词"""
         fallback_keywords = {
             '文旅宣传': [
-                {'word': '打卡', 'hot_score': 95},
-                {'word': '攻略', 'hot_score': 90},
-                {'word': '必去', 'hot_score': 85},
-                {'word': '拍照', 'hot_score': 80},
-                {'word': '周末', 'hot_score': 75},
+                {'word': '攻略', 'hot_score': 95},
+                {'word': '夜爬', 'hot_score': 90},
+                {'word': '日出', 'hot_score': 85},
+                {'word': '云海', 'hot_score': 80},
             ],
             '历史故事': [
                 {'word': '文物', 'hot_score': 95},
@@ -101,25 +102,7 @@ class WeiboKeywordRecommender:
         
         return {
             'keywords': keywords,
-            'hot_topics': [f'{theme}旅游攻略', f'{theme}必去景点'],
             'theme': theme,
             'video_type': video_type,
             'fallback': True  # 标记使用了降级方案
         }
-
-
-# 测试
-if __name__ == '__main__':
-    recommender = WeiboKeywordRecommender()
-    
-    print("测试微博关键词推荐...")
-    result = recommender.recommend('华山', '文旅宣传')
-    
-    print(f"\n主题：{result['theme']}")
-    print("推荐关键词:")
-    for kw in result['keywords'][:5]:
-        print(f"  • {kw['word']} ({kw['hot_score']})")
-    
-    print("热门话题:")
-    for topic in result['hot_topics'][:3]:
-        print(f"  • {topic}")

@@ -45,7 +45,7 @@
               <p class="visual-text">{{ shot.visual }}</p>
               
               <div v-if="images[index]?.status === 'completed'" class="image-preview">
-                <img :src="images[index].url" alt="分镜图" />
+                <img :src="images[index].url + '?t=' + Date.now()" alt="分镜图" />
               </div>
               <div v-else-if="images[index]?.status === 'running'" class="loading-state">
                 <el-spinner />
@@ -227,7 +227,7 @@ const handleGenerateAll = async () => {
           task_id: taskStore.taskId,
           shot_index: i,
           prompt: shot.prompt,
-          theme: script?.theme,           // 传递主题
+          theme: script?.original_theme,  // 传递原始主题
           video_type: script?.video_type, // 传递视频类型
           style: script?.style            // 传递风格
         })

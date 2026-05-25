@@ -15,14 +15,8 @@
         v-model:first-last-mode="firstLastMode"
       />
       
-      <!-- BGM 和音效配置（配音移到最后一步） -->
-      <div style="margin-top: 20px; padding: 15px; background: #f5f7fa; border-radius: 8px; border: 1px solid #e4e7ed">
-        <h4 style="margin: 0 0 10px 0; color: #303133">🎵 BGM 和音效配置</h4>
-        <p style="margin: 0 0 15px 0; color: #909399; font-size: 13px">
-          💡 提示：配音功能已移至<b>成果展示</b>页面，在视频合并完成后再添加
-        </p>
-        <AudioConfig ref="audioConfigRef" />
-      </div>
+      <!-- BGM 和音效配置 -->
+      <AudioConfig ref="audioConfigRef" />
       
       <el-card class="video-card" style="margin-top: 20px">
         <template #header>
@@ -109,12 +103,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import { useScriptStore } from '@/stores/script'
 import { useTaskStore } from '@/stores/task'
 import { useUIStore } from '@/stores/ui'
 import { getTaskImages } from '@/api/images'
 import { generateVideo, getTaskVideos, mergeVideos, generateAllVideos } from '@/api/videos'
-import { generateAllAudios, mergeAudioVideo } from '@/api/audios'
 import VideoConfig from '@/components/VideoConfig.vue'
 import AudioConfig from '@/components/AudioConfig.vue'
 
@@ -283,14 +277,32 @@ const handleGenerateAll = async () => {
 const handleMerge = async () => {
   if (!taskStore.taskId) return
   
+  // 如果已有合并视频，提示确认
+  if (mergedVideo.value) {
+    try {
+      await ElMessageBox.confirm(
+        '已存在完整视频，重新合并将覆盖之前的版本，是否继续？',
+        '确认重新合并',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+    } catch {
+      // 用户取消
+      return
+    }
+  }
+  
   merging.value = true
   
   try {
     // 仅合并视频（不含配音）
     const result = await mergeVideos(taskStore.taskId)
     
-    mergedVideo.value = result
-    uiStore.showSuccess('视频合并成功！请前往成果展示页面添加配音')
+    mergedVideo.value = { url: result.merged_url, status: result.status }
+    uiStore.showSuccess('视频合并成功！')
   } catch (err: any) {
     uiStore.showError(err.message)
   } finally {
